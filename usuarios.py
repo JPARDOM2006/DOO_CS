@@ -1,8 +1,8 @@
-class usuarios:
-    def _init__(self, nombre, apellido, documento, telefono, correo, fecha_registro):
+class Usuarios:
+    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro):
         self.nombre = nombre
         self.apellido = apellido
-        self.documento = documento
+        self.__documento = documento
         self.telefono = telefono
         self.correo = correo
         self.fecha_registro = fecha_registro
