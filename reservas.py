@@ -12,12 +12,8 @@ class Reservas:
         self. estado = estado
         self.total_reserva = total_reserva
         self.abono = abono
-        self.lista_clientes = []
-        self.lista_canchas = []
-        self.lista_reservas = []
 
-
-
+        
 
 class Principal:
     def __init__(self):
@@ -86,6 +82,6 @@ class Principal:
                 for i in self.lista_clientes:
                     print(i.nombre)
 
-if __name__ =="__main__":
-    a=principal()
-    a.menu()
+    if __name__  == "__main__":
+        a = principal()
+        a.menu()
