@@ -28,6 +28,19 @@ class Usuarios:
         for _ in usuario:
             print(_) 
 
-usuario_1 = Usuarios("Juan", "Pardo", 1012339187, 3213959007, "j.@gmail.com", "02", "J", "5")
 
-usuario_1.registro()
+class Cliente(Usuarios):
+    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro, name, password):
+        super().__init__(nombre, apellido, documento, telefono, correo, fecha_registro, name, password)
+
+    def crear_usuario(self):
+        nombre = str(input("Ingrese su nombre de usuario: "))
+
+    def crear_reservas(self):
+        pass
+
+    def editar_reservas(self):
+        pass
+
+    def cancelar_reservas(self):
+        pass    
