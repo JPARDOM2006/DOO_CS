@@ -82,6 +82,3 @@ class Principal:
                 for i in self.lista_clientes:
                     print(i.nombre)
 
-    if __name__  == "__main__":
-        a = principal()
-        a.menu()
