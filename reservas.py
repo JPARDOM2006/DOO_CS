@@ -12,17 +12,18 @@ class Reservas:
         self. estado = estado
         self.total_reserva = total_reserva
         self.abono = abono
-        self.lista_clinte = []
-        self.lista_cancha = []
+        self.lista_clientes = []
+        self.lista_canchas = []
 
 
 
 class principal:
-
     def __init__(self):
         self.lista_canchas=[]
         self.lista_clientes=[]
         self.lista_reservas=[]
+        self.lista_empleados=[]
+        self.administradores=[]
 
 
     def menu(self):

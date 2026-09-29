@@ -44,3 +44,53 @@ class Cliente(Usuarios):
 
     def cancelar_reservas(self):
         pass    
+
+
+class Empleado(Usuarios):
+    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro, name, password, cargo, salario, horario, direccion):
+        super().__init__(nombre, apellido, documento, telefono, correo, fecha_registro, name, password)
+        self.cargo = cargo
+        self.salario = salario
+        self.horario = horario
+        self.direccion = direccion
+        self.lista_empleado = []
+
+    def registrar_entrada(self):
+        nombre = input("Ingrese su nombre: ")
+        if nombre in self.lista:
+            print("Bienvenido, puede ingresar")
+        else:
+            print("No se encuentra registrado en el sistema, digite de nuevo su nombre")
+
+    def registrar_salida(self):
+        nombre = input("Ingrese su nombre: ")
+        if nombre in self.lista:
+            print("Gracias por su visita, puede salir")
+        else:
+            print("No se encuentra registrado en el sistema, digite de nuevo su nombre")
+
+    def consultar_reservas(self):
+        print("Consultando reservas...")
+
+    def actualizar_disponibilidad(self):
+        print("Actualizando disponibilidad...")
+
+    def registrar_mantenimiento(self):
+        print("Registrando mantenimiento...")
+
+
+class Administrador(Usuarios):
+    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro, name, password, cargo, salario, direccion):
+        super().__init__(nombre, apellido, documento, telefono, correo, fecha_registro, name, password)
+        self.cargo = cargo
+        self.salario = salario
+        self.direccion = direccion
+
+    def gestionar_usuarios(self):
+        print("Gestionando usuarios...")
+
+    def gestionar_reportes(self):
+        print("Gestionando reportes...")
+
+    def crear_usuarios(self):
+        print("Creando usuarios...")
