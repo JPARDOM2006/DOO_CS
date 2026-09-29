@@ -26,6 +26,7 @@ class Principal:
     def crear_usuario(self):
         op = int(input("Ingrese el tipo de usuario que desea crear: 1. Cliente 2. Empleado 3. Administrador: "))
         if op == 1:
+            print("\nBIENVENIDO A LA CREACION DE USUARIO DE CLIENTES")
             nombre= input("Ingrese el nombre: ")
             apellido= input("Ingrese el apellido: ")
             documento= input("Ingrese el documento: ")
@@ -38,6 +39,7 @@ class Principal:
             print("Cliente creado exitosamente.")
             
         if op == 2:
+            print("\nBIENVENIDO A LA CREACION DE USUARIO DE EMPLEADOS")
             nombre= input("Ingrese el nombre: ")
             apellido= input("Ingrese el apellido: ")
             documento= input("Ingrese el documento: ")
@@ -54,6 +56,7 @@ class Principal:
             print("Empleado creado exitosamente.")
 
         if op == 3:
+            print("\nBIENVENIDO A LA CREACION DE USUARIO DE ADMINISTRADORES")
             nombre= input("Ingrese el nombre: ")
             apellido= input("Ingrese el apellido: ")
             documento= input("Ingrese el documento: ")
@@ -68,33 +71,85 @@ class Principal:
             self.lista_administradores.append(nuevo_administrador)
             print("Administrador creado exitosamente.")
 
+
     def modificar_usuario(self):
         
         opc = int(input("Ingrese el tipo de usuario que desea modificar: 1. Cliente 2. Empleado 3. Administrador: "))
         if len(self.lista_clientes) == 0:
             print("No hay clientes registrados.")
             return
-
-    def eliminar_usuario(self):
-        pass
-
-    def generar_reportes(self):
-        pass
+        
 
     def ingresar_usuario(self):
         user = input("Ingrese su correo o nombre, ingresados en el registro: ")
         password = input("Ingrese su contraseña: ")
-        if user in [cliente.correo for cliente in self.lista_clientes] or user in [cliente.nombre for cliente in self.lista_clientes]:
-            print("Usuario encontrado.")
-            if password in [cliente.password for cliente in self.lista_clientes]:
-                print("Contraseña correcta. Bienvenido.")
-            else:
-                print("Contraseña incorrecta.")
-                return self.menu() 
+
+        usuario_logueado = None
+        rol = ""
+
+        for cliente in self.lista_clientes:
+            if (cliente.correo == user or cliente.nombre == user) and cliente.password == password:
+                usuario_logueado = cliente
+                rol = "cliente"
+                break
+
+        if not usuario_logueado:
+            for empleado in self.lista_empleados:
+                if (empleado.correo == user or empleado.nombre == user) and empleado.password == password:
+                    usuario_logueado = empleado
+                    rol = "empleado"
+                    break
+
+        if not usuario_logueado:
+            for administrador in self.lista_administradores:
+                if (administrador.correo == user or administrador.nombre == user) and administrador.password == password:
+                    usuario_logueado = administrador
+                    rol = "administrador"
+                    break
+
+        if usuario_logueado:
+            print(f"Usuario y contraseña correcta : {usuario_logueado.nombre} ")
+            self.redirigir_rol(usuario_logueado, rol)
         else:
-            print("Usuario no encontrado.")
-            return self.menu() 
-    
+            print(f"Usuario o contraseña incorrecta, {usuario_logueado.nombre}")
+            return self.menu()
+
+    def redirigir_rol(self, usuario, rol):
+        if rol == "cliente":
+            return self.menu_cliente(usuario)
+        elif rol == "empleado":
+            return self.menu_empleado(usuario)
+        elif rol == "administrador":
+            return self.menu_administrador(usuario)
+        
+
+    def menu_cliente(self, cliente_actual):
+        while True:
+            print("\nBIENVENIDO AL MENU CLIENTE")
+            print("La lista de opciones es la siguiente: ")
+            print("1. Crear reservas")
+            print("2. Consultar reservas")
+            print("3. Editar reservas")
+            print("4. Cancelar reservas")
+
+    def menu_empleado(self, empleado_actual):
+        while True:
+            print("\nBIENVENIDO AL MENU EMPLEADO")
+            print("1. Registro entrada")
+            print("2. Registrar salida")
+            print("3. Consultar reservas")
+            print("4. Actualizar disponibilidad")
+            print("5. Registrar mantenimiento")
+
+    def menu_administrador(self, administrador_actual):
+        while True:
+            print("\nBIENVENIDO AL MENU ADMINISTRADOR")
+            print("1. Crear usuario")
+            print("2. Modificar usuario")
+            print("3. Eliminar usuario")
+            print("4. Generar reportes")
+
+
     def menu(self):
 
         while True:
