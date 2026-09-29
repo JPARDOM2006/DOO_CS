@@ -14,10 +14,12 @@ class Reservas:
         self.abono = abono
         self.lista_clientes = []
         self.lista_canchas = []
+        self.lista_reservas = []
 
 
 
-class principal:
+
+class Principal:
     def __init__(self):
         self.lista_canchas=[]
         self.lista_clientes=[]
@@ -29,22 +31,56 @@ class principal:
     def menu(self):
 
         while True:
-            print("1. para crear cliente")
-            opc= input("ingrese una opción")
+            print("1. Crear usuario")
+            opc = int(input("Ingrese una opción: "))
 
             if opc=="1":
-                nombre= input("ingrese el nombre")
-                apellido= input("ingrese el apellido")
-                documento= input("ingrese el documento")
-                telefono= input("ingrese el telefono")
-                correo= input("ingrese el correo")
-                fecha_registro= input("ingrese el fecha_registro")
-                user= input("ingrese el user")
-                password= input("ingrese el password")
+                op = int(input("Ingrese el tipo de usuario que desea crear: 1. Cliente 2. Empleado 3. Administrador: "))
+                if op == 1:
+                    nombre= input("Ingrese el nombre: ")
+                    apellido= input("Ingrese el apellido: ")
+                    documento= input("Ingrese el documento: ")
+                    telefono= input("Ingrese el telefono: ")
+                    correo= input("Ingrese el correo: ")
+                    fecha_registro= input("Ingrese el fecha_registro: ")
+                    user= input("Ingrese el user: ")
+                    password= input("Ingrese el password: ")
 
+                    nuevo_cliente= US.Cliente(nombre,apellido,documento,telefono,correo,fecha_registro,user,password)
+                    self.lista_clientes.append(nuevo_cliente)
+                    
+                if op == 2:
+                    nombre= input("Ingrese el nombre: ")
+                    apellido= input("Ingrese el apellido: ")
+                    documento= input("Ingrese el documento: ")
+                    telefono= input("Ingrese el telefono: ")
+                    correo= input("Ingrese el correo: ")
+                    fecha_registro= input("Ingrese el fecha_registro: ")
+                    user= input("Ingrese el user: ")
+                    password= input("Ingrese el password: ")
+                    cargo= input("Ingrese el cargo: ")
+                    salario= input("Ingrese el salario: ")
+                    horario= input("Ingrese el horario: ")
+                    direccion= input("Ingrese la direccion: ")
 
-                nuevo_cliente= US.Usuarios(nombre,apellido,documento,telefono,correo,fecha_registro,user,password)
-                self.lista_clientes.append(nuevo_cliente)
+                    nuevo_empleado= US.Empleado(nombre,apellido,documento,telefono,correo,fecha_registro,user,password)
+                    self.lista_empleados.append(nuevo_empleado)
+
+                if op == 3:
+                    nombre= input("Ingrese el nombre: ")
+                    apellido= input("Ingrese el apellido: ")
+                    documento= input("Ingrese el documento: ")
+                    telefono= input("Ingrese el telefono: ")
+                    correo= input("Ingrese el correo: ")
+                    fecha_registro= input("Ingrese el fecha_registro: ")
+                    user= input("Ingrese el user: ")
+                    password= input("Ingrese el password: ")
+                    cargo= input("Ingrese el cargo: ")
+                    salario= input("Ingrese el salario: ")
+                    direccion= input("Ingrese la direccion: ")
+
+                    nuevo_administrador= US.Administrador(nombre,apellido,documento,telefono,correo,fecha_registro,user,password,cargo,salario,direccion)
+                    self.administradores.append(nuevo_administrador)
 
             elif opc=="2":
                 for i in self.lista_clientes:
