@@ -1,5 +1,9 @@
 class Establecimiento:
-    def __init__(self, nombre_establecimiento, ubicacion):
-        self.nombre_establecimiento = nombre_establecimiento
-        self.ubicacion = ubicacion
+    def __init__(self, nombre, direccion, telefono):
+       
+        self.nombre = nombre
+        self.direccion = direccion
+        self.telefono = telefono
+        self.lista_canchas = []       
+        self.lista_empleados = []
         

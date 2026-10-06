@@ -1,8 +1,8 @@
 class Cancha:
-    def __init__(self, nombre_cancha, precio, horario, estado, tipo_cancha):
+    def __init__(self, id_cancha, nombre_cancha, tipo_superficie, capacidad, tiene_techado, estado="Disponible"):
+        self.id_cancha = id_cancha
         self.nombre_cancha = nombre_cancha
-        self.precio = precio
-        self.horario = horario
-        self.estado = estado
-        self.tipo_cancha = tipo_cancha
-
+        self.tipo_superficie = tipo_superficie
+        self.capacidad = capacidad
+        self.tiene_techado = tiene_techado
+        self.estado = estado  

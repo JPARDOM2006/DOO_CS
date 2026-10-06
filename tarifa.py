@@ -1,8 +1,7 @@
-class Tarifa():
-    def __init__(self, valor_hora, dias_semana, valor_dia, valor_ubicacion, valor_jornada):
-        self.valor_hora = valor_hora
-        self.dias_semana = dias_semana
-        self.valor_dia = valor_dia
-        self.valor_ubicacion = valor_ubicacion
-        self.valor_jornada = valor_jornada
+class Tarifa:
+    def __init__(self, id_tarifa, descripcion, precio_por_hora, es_horario_pico=False):
         
+        self.id_tarifa = id_tarifa
+        self.descripcion = descripcion        
+        self.precio_por_hora = precio_por_hora  
+        self.es_horario_pico = es_horario_pico 
