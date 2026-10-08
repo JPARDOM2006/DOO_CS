@@ -1,12 +1,10 @@
 class Usuarios:
-    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro, name, password):
+    def __init__(self, nombre, apellido, documento, telefono, correo, password):
         self.nombre = nombre
         self.apellido = apellido
         self.documento = documento
         self.telefono = telefono
         self.correo = correo
-        self.fecha_registro = fecha_registro
-        self.name = name
         self.password = password
         self.lista = []
 
