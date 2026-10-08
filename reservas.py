@@ -75,10 +75,11 @@ class Principal:
     def modificar_usuario(self):
         
         opc = int(input("Ingrese el tipo de usuario que desea modificar: 1. Cliente 2. Empleado 3. Administrador: "))
-        if len(self.lista_clientes) == 0:
-            print("No hay clientes registrados.")
-            return
-        
+        if opc == 3:
+            if len(self.lista_administradores) == 0:
+                print("No hay administradores registrados.")
+                return self.menu()
+            
 
     def ingresar_usuario(self):
         user = input("Ingrese su correo o nombre, ingresados en el registro: ")
@@ -149,6 +150,12 @@ class Principal:
             print("3. Eliminar usuario")
             print("4. Generar reportes")
 
+            opc = int(input("Ingrese una opción: "))
+            
+            if opc == 1:
+                self.crear_usuario()
+            elif opc == 2:
+                self.modificar_usuario()
 
     def menu(self):
 
@@ -167,6 +174,6 @@ class Principal:
                 for i in self.lista_clientes:
                     print(i.nombre)
 
-if __name__ == "__main__":
-    a = Principal() 
-    a.menu()
+#if __name__ == "__main__":
+ #   a = Principal() 
+  #  a.menu()

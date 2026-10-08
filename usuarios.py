@@ -30,8 +30,8 @@ class Usuarios:
 
 
 class Cliente(Usuarios):
-    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro, name, password):
-        super().__init__(nombre, apellido, documento, telefono, correo, fecha_registro, name, password)
+    def __init__(self, nombre, apellido, documento, telefono, correo, password):
+        super().__init__(nombre, apellido, documento, telefono, correo, password)
 
     def crear_usuario(self):
         nombre = str(input("Ingrese su nombre de usuario: "))
@@ -47,8 +47,8 @@ class Cliente(Usuarios):
 
 
 class Empleado(Usuarios):
-    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro, name, password, cargo, salario, horario, direccion):
-        super().__init__(nombre, apellido, documento, telefono, correo, fecha_registro, name, password)
+    def __init__(self, nombre, apellido, documento, telefono, correo, password, cargo, salario, horario, direccion):
+        super().__init__(nombre, apellido, documento, telefono, correo, password)
         self.cargo = cargo
         self.salario = salario
         self.horario = horario
@@ -80,8 +80,8 @@ class Empleado(Usuarios):
 
 
 class Administrador(Usuarios):
-    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro, name, password, cargo, salario, direccion):
-        super().__init__(nombre, apellido, documento, telefono, correo, fecha_registro, name, password)
+    def __init__(self, nombre, apellido, documento, telefono, correo, password, cargo, salario, direccion):
+        super().__init__(nombre, apellido, documento, telefono, correo, password)
         self.cargo = cargo
         self.salario = salario
         self.direccion = direccion
