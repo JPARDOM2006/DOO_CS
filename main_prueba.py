@@ -45,7 +45,7 @@ class SistemaAlquilerPrincipal:
 
         nuevo_cliente = US.Usuarios(id_usuario, nombre, apellido, documento, telefono, correo, fecha_registro, user, password )
         self.lista_clientes.append(nuevo_cliente)
-        print("✓ Cliente registrado con éxito.")
+        print("Cliente registrado con éxito.")
 
       elif opc == "2":
         print("\n--- Lista de Clientes Registrados ---")
@@ -106,10 +106,12 @@ class SistemaAlquilerPrincipal:
         h_final = input("Hora final (Ej: 19:00): ")
         dur = float(input("Duración en horas (Ej: 1.0): "))
 
+        
         precio_hora = self.establecimiento.lista_canchas[0].precio
 
+       
         nueva_reserva = Reservas(
-            id_reserva=id_resRes := id_res,
+            id_reserva=id_res,
             fecha_apartada=fecha_apt,
             hora_inicio=h_inicio,
             hora_final=h_final,
@@ -119,17 +121,17 @@ class SistemaAlquilerPrincipal:
             abono=0.0,
         )
 
-     
-        nueva_reserva.calcular(precio_hora)
-        
        
+        nueva_reserva.calcular(precio_hora)
+
+        
         abono_ingresado = float(input("Ingrese el valor del abono pagado: "))
         nueva_reserva.abono = abono_ingresado
         nueva_reserva.reserva_confirmada()
 
         self.lista_reservas.append(nueva_reserva)
         print("✓ Reserva procesada en el sistema.")
-
+     
       elif opc == "6":
         print("¡Gracias por usar el sistema! Saliendo...")
         break
