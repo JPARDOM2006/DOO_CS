@@ -4,7 +4,9 @@ from horario import Horario
 from reservas import Reservas
 from tarifa import Tarifa
 import usuarios as US
-from pago import Pago
+from efectivo import Efectivo
+from tarjeta import Tarjeta
+from tranferencia import Transferencia
 
 class Principal:
     def __init__(self):
@@ -21,7 +23,6 @@ class Principal:
         self.lista_reservas = []
         self.lista_empleados = []
         self.lista_administradores = []
-        self.lista_pagos = []
 
     # ==========================================
     # LOGICA DE CANCHAS Y RESERVAS (Integrada)
@@ -70,12 +71,65 @@ class Principal:
         )
         
         nueva_reserva.calcular(precio_hora)
-        abono_ingresado = float(input(f"El total es ${nueva_reserva.total_reserva}. Ingrese el valor del abono pagado: "))
-        comprobante_ingresado = input("Ingrese el número de comprobante de pago: ")
+        print(f"\nEl total de la reserva es: ${nueva_reserva.total_reserva:,.2f}")
+        abono_ingresado = float(input("Ingrese el valor del abono a pagar ahora: "))
         
+        # --- INTEGRACIÓN DE LAS CLASES DE PAGO ---
+        print("\n--- SELECCIONE UN MÉTODO DE PAGO ---")
+        print("1. Efectivo")
+        print("2. Tarjeta")
+        print("3. Transferencia")
+        opc_pago = int(input("Ingrese el método de pago (1/2/3): "))
+
+        pago_valido = False
+        comprobante_ingresado = "N/A"
+
+        if opc_pago == 1:
+            monto_rec = float(input("\nIngrese el monto recibido en efectivo: "))
+            # Instanciamos la clase Efectivo
+            pago_efectivo = Efectivo(id_metodopago=1, tipo_pago="Efectivo", descripcion="Pago en caja", 
+                                     id_efectivo=len(self.lista_pagos)+1, monto_recibido=monto_rec, 
+                                     cambio=0.0, estado="Pendiente")
+            
+            pago_valido = pago_efectivo.validarPago(abono_ingresado)
+            comprobante_ingresado = f"EFECTIVO-{id_res}"
+            
+        elif opc_pago == 2:
+            tipo_tarjeta = input("\nTipo de tarjeta (Visa/Mastercard): ")
+            titular = input("Nombre del titular: ")
+            vencimiento = input("Fecha de vencimiento (MM/AA): ")
+            cvv = input("Código de seguridad: ")
+            
+            # Instanciamos la clase Tarjeta
+            pago_tarjeta = Tarjeta(id_metodopago=2, tipo_pago="Tarjeta", descripcion="Pago en datáfono", 
+                                   id_tarjeta=len(self.lista_pagos)+1, tipo_tarjeta=tipo_tarjeta, 
+                                   titular=titular, fecha_vencimiento=vencimiento, codigo_seguridad=cvv)
+            
+            pago_valido = pago_tarjeta.validarTarjeta()
+            comprobante_ingresado = input("Ingrese el número de comprobante (voucher) del datáfono: ")
+            
+        elif opc_pago == 3:
+            banco = input("\nBanco de origen: ")
+            estado_trans = "completada" # Para el ejercicio asumimos que pasó exitosamente
+            
+            # Instanciamos la clase Transferencia
+            pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", 
+                                               id_transferencia=len(self.lista_pagos)+1, banco_origen=banco, 
+                                               fecha=fecha_apt, valor=abono_ingresado, estado=estado_trans)
+            
+            pago_valido = pago_transferencia.validarTransferencia()
+            comprobante_ingresado = input("Ingrese el número de comprobante de la transferencia: ")
+            
+        else:
+            print("Opción de pago inválida.")
+            return
+
+        # --- VALIDACIÓN FINAL ---
+        if not pago_valido:
+            print("\n❌ El pago no pudo ser validado. Cancelando el proceso de reserva...")
+            return
         nueva_reserva.abono = abono_ingresado
 
-        # --- INTEGRACIÓN CON CLASE PAGO ---
         nuevo_pago = Pago(
             fecha_pago=fecha_apt,
             valor=abono_ingresado,
@@ -87,13 +141,11 @@ class Principal:
         nuevo_pago.reserva_reconfirmada(nueva_reserva)
         
         saldo_pendiente = nuevo_pago.calcularTotal(nueva_reserva)
-        print(f"Saldo pendiente: ${saldo_pendiente:,.2f}")
+        print(f"\nSaldo pendiente de la reserva: ${saldo_pendiente:,.2f}")
 
         self.lista_pagos.append(nuevo_pago)
         self.lista_reservas.append(nueva_reserva)
         print(f"✓ Reserva creada con éxito para {cliente_actual.nombre}.")
-
-        
 
     # ==========================================
     # CRUD DE USUARIOS 
