@@ -4,6 +4,7 @@ from horario import Horario
 from reservas import Reservas
 from tarifa import Tarifa
 import usuarios as US
+from pago import Pago
 
 class Principal:
     def __init__(self):
@@ -20,6 +21,7 @@ class Principal:
         self.lista_reservas = []
         self.lista_empleados = []
         self.lista_administradores = []
+        self.lista_pagos = []
 
     # ==========================================
     # LOGICA DE CANCHAS Y RESERVAS (Integrada)
@@ -69,11 +71,29 @@ class Principal:
         
         nueva_reserva.calcular(precio_hora)
         abono_ingresado = float(input(f"El total es ${nueva_reserva.total_reserva}. Ingrese el valor del abono pagado: "))
+        comprobante_ingresado = input("Ingrese el número de comprobante de pago: ")
+        
         nueva_reserva.abono = abono_ingresado
-        nueva_reserva.reserva_confirmada()
 
+        # --- INTEGRACIÓN CON CLASE PAGO ---
+        nuevo_pago = Pago(
+            fecha_pago=fecha_apt,
+            valor=abono_ingresado,
+            comprobante=comprobante_ingresado,
+            estado="Registrado"
+        )
+        
+        nuevo_pago.registrar_Pago()
+        nuevo_pago.reserva_reconfirmada(nueva_reserva)
+        
+        saldo_pendiente = nuevo_pago.calcularTotal(nueva_reserva)
+        print(f"Saldo pendiente: ${saldo_pendiente:,.2f}")
+
+        self.lista_pagos.append(nuevo_pago)
         self.lista_reservas.append(nueva_reserva)
         print(f"✓ Reserva creada con éxito para {cliente_actual.nombre}.")
+
+        
 
     # ==========================================
     # CRUD DE USUARIOS 
