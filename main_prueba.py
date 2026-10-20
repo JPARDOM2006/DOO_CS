@@ -131,7 +131,7 @@ class Principal:
             return
         nueva_reserva.abono = abono_ingresado
 
-        nuevo_pago = pago(
+        nuevo_pago = Pago(
             fecha_pago=fecha_apt,
             valor=abono_ingresado,
             comprobante=comprobante_ingresado,
