@@ -7,6 +7,7 @@ import usuarios as US
 from efectivo import Efectivo
 from tarjeta import Tarjeta
 from tranferencia import Transferencia
+from pago import Pago
 
 class Principal:
     def __init__(self):
@@ -130,7 +131,7 @@ class Principal:
             return
         nueva_reserva.abono = abono_ingresado
 
-        nuevo_pago = Pago(
+        nuevo_pago = pago(
             fecha_pago=fecha_apt,
             valor=abono_ingresado,
             comprobante=comprobante_ingresado,
