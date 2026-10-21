@@ -39,7 +39,7 @@ class Principal:
             precio=tarifa_base.calcular_tarifa(), horario="08:00 - 22:00", tipo_cancha="Fútbol 5",
         )
         self.establecimiento.agregar_cancha(cancha_nueva)
-        print("✓ Cancha y tarifa añadidas correctamente al establecimiento.")
+        print("Cancha y tarifa añadidas correctamente al establecimiento.")
 
     def ver_canchas(self):
         print(f"\n--- Establecimiento: {self.establecimiento.nombre_establecimiento} ---")
@@ -127,7 +127,7 @@ class Principal:
 
         # --- VALIDACIÓN FINAL ---
         if not pago_valido:
-            print("\n❌ El pago no pudo ser validado. Cancelando el proceso de reserva...")
+            print("\n El pago no pudo ser validado. Cancelando el proceso de reserva...")
             return
         nueva_reserva.abono = abono_ingresado
 
@@ -268,7 +268,85 @@ class Principal:
             self.menu_empleado(usuario)
         elif rol == "administrador":
             self.menu_administrador(usuario)
+            
+    # ==========================================
+    # FUNCIONES DE GESTIÓN DE RESERVAS (Para conectar con usuarios.py)
+    # ==========================================
+    def consultar_mis_reservas(self, cliente):
+        print(f"\n--- RESERVAS DE {cliente.nombre.upper()} ---")
+        encontradas = False
+        for res in self.lista_reservas:
+            # Validamos si la reserva pertenece a este cliente verificando la lista_clinte
+            if hasattr(res, 'cliente_asignado') and res.cliente_asignado.documento == cliente.documento:
+                print(f"ID: {res.id_reserva} | Fecha: {res.fecha_apartada} | Horario: {res.hora_inicio} a {res.hora_final} | Estado: {res.estado}")
+                encontradas = True
         
+        if not encontradas:
+            print("No tienes reservas registradas actualmente.")
+
+    def cancelar_mis_reservas(self, cliente):
+        self.consultar_mis_reservas(cliente)
+        id_cancelar = int(input("\nIngrese el ID de la reserva que desea cancelar (0 para salir): "))
+        if id_cancelar == 0: return
+
+        for res in self.lista_reservas:
+            if hasattr(res, 'cliente_asignado') and res.cliente_asignado.documento == cliente.documento:
+                if res.id_reserva == id_cancelar:
+                    res.estado = "Cancelada"
+                    print("✓ Reserva cancelada exitosamente.")
+                    return
+        print("ID de reserva no encontrado o no pertenece a tu cuenta.")
+
+    def editar_mis_reservas(self, cliente):
+        self.consultar_mis_reservas(cliente)
+        id_editar = int(input("\nIngrese el ID de la reserva a editar (0 para salir): "))
+        if id_editar == 0: return
+
+        for res in self.lista_reservas:
+            if hasattr(res, 'cliente_asignado') and res.cliente_asignado.documento == cliente.documento and res.id_reserva == id_editar:
+                print("1. Modificar fecha")
+                print("2. Modificar horario")
+                opc = int(input("¿Qué deseas editar?: "))
+                if opc == 1:
+                    res.fecha_apartada = input("Nueva fecha (YYYY-MM-DD): ")
+                elif opc == 2:
+                    res.hora_inicio = input("Nueva hora de inicio: ")
+                    res.hora_final = input("Nueva hora final: ")
+                print("✓ Reserva actualizada.")
+                return
+        print("Reserva no encontrada.")
+
+    # ==========================================
+    # FUNCIONES DE EMPLEADO (Canchas y control general)
+    # ==========================================
+    def mostrar_todas_las_reservas(self):
+        print("\n--- TODAS LAS RESERVAS DEL SISTEMA ---")
+        if not self.lista_reservas:
+            print("No hay reservas en el sistema.")
+        for res in self.lista_reservas:
+            cliente_nom = res.cliente_asignado.nombre if hasattr(res, 'cliente_asignado') else "Desconocido"
+            print(f"Reserva #{res.id_reserva} | Cliente: {cliente_nom} | Fecha: {res.fecha_apartada} | Estado: {res.estado}")
+
+    def actualizar_estado_cancha(self):
+        self.ver_canchas()
+        id_c = int(input("\nIngrese el ID de la cancha a actualizar: "))
+        for can in self.establecimiento.lista_canchas:
+            if can.id_cancha == id_c:
+                nuevo = input("Ingrese el nuevo estado (Disponible/Ocupada/Mantenimiento): ")
+                can.actualizarEstado(nuevo)
+                return
+        print("Cancha no encontrada.")
+
+    def registrar_mantenimiento_cancha(self):
+        self.ver_canchas()
+        id_c = int(input("\nIngrese el ID de la cancha en mantenimiento: "))
+        for can in self.establecimiento.lista_canchas:
+            if can.id_cancha == id_c:
+                can.actualizarEstado("Mantenimiento")
+                print(f"✓ La cancha '{can.nombre_cancha}' ahora está inhabilitada por mantenimiento.")
+                return
+        print("Cancha no encontrada.")
+
     # ==========================================
     # MENUS ESPECIFICOS POR ROL
     # ==========================================

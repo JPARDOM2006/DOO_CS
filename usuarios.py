@@ -1,46 +1,67 @@
+import datetime
+
 class Usuarios:
-    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro, name, password):
+    def __init__(self, nombre, apellido, documento, telefono, correo, password):
         self.nombre = nombre
         self.apellido = apellido
         self.documento = documento
         self.telefono = telefono
         self.correo = correo
-        self.fecha_registro = fecha_registro
-        self.name = name
         self.password = password
-        self.lista = []
+        self.fecha_registro = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
     def inicio_sesion(self):
-        print("Ingreso a la sesion de usuario")
-        nombre = str(input("Ingrese su nombre de usuario: "))
-        password = str(input("Ingrese su contraseña: "))
-
-    def registro(self):
-        nombre = input("Ingrese su nombre: ")
-        apellido = input("Ingrese su apellido: ")
-        documento = input("Ingrese su numero de documento: ")
-        telefono = input("Ingrese su numero de telefono: ")
-        correo = input("Ingrese su correo electronico: ")
-        password = input("Ingrese su contraseña: ")
-
-        usuario = [nombre, apellido, documento, telefono, correo, password]
-        self.lista.append(usuario)
-        for _ in usuario:
-            print(_) 
-
+        print("Ingreso a la sesión de usuario")
 
 class Cliente(Usuarios):
-    def __init__(self, nombre, apellido, documento, telefono, correo, fecha_registro, name, password):
-        super().__init__(nombre, apellido, documento, telefono, correo, fecha_registro, name, password)
+    def __init__(self, nombre, apellido, documento, telefono, correo, password):
+        super().__init__(nombre, apellido, documento, telefono, correo, password)
 
-    def crear_usuario(self):
-        nombre = str(input("Ingrese su nombre de usuario: "))
+    def crear_reservas(self, sistema):
+        # Llama a la función del sistema y se pasa a sí mismo como el cliente actual
+        sistema.crear_reserva_sistema(self)
 
-    def crear_reservas(self):
-        pass
+    def consultar_reservas(self, sistema):
+        sistema.consultar_mis_reservas(self)
 
-    def editar_reservas(self):
-        pass
+    def editar_reservas(self, sistema):
+        sistema.editar_mis_reservas(self)
 
-    def cancelar_reservas(self):
-        pass    
+    def cancelar_reservas(self, sistema):
+        sistema.cancelar_mis_reservas(self)
+
+class Empleado(Usuarios):
+    def __init__(self, nombre, apellido, documento, telefono, correo, password, cargo, salario, horario, direccion):
+        super().__init__(nombre, apellido, documento, telefono, correo, password)
+        self.cargo = cargo
+        self.salario = salario
+        self.horario = horario
+        self.direccion = direccion
+
+    def registrar_entrada(self):
+        print(f"\n[!] Entrada registrada exitosamente para {self.nombre} a las {datetime.datetime.now().strftime('%H:%M')}")
+
+    def registrar_salida(self):
+        print(f"\n[!] Salida registrada exitosamente para {self.nombre} a las {datetime.datetime.now().strftime('%H:%M')}")
+
+    def consultar_reservas(self, sistema):
+        sistema.mostrar_todas_las_reservas()
+
+    def actualizar_disponibilidad(self, sistema):
+        sistema.actualizar_estado_cancha()
+
+    def registrar_mantenimiento(self, sistema):
+        sistema.registrar_mantenimiento_cancha()
+
+class Administrador(Usuarios):
+    def __init__(self, nombre, apellido, documento, telefono, correo, password, cargo, salario, direccion):
+        super().__init__(nombre, apellido, documento, telefono, correo, password)
+        self.cargo = cargo
+        self.salario = salario
+        self.direccion = direccion
+
+    def gestionar_usuarios(self, sistema):
+        print("Módulo de gestión de usuarios en desarrollo...")
+
+    def gestionar_reportes(self, sistema):
+        print("Generando reportes financieros y de ocupación...")
