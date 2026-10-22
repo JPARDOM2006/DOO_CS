@@ -28,18 +28,46 @@ class Principal:
     # ==========================================
     # LOGICA DE CANCHAS Y RESERVAS (Integrada)
     # ==========================================
-    def registrar_cancha_prueba(self):
-        print("\n--- Configurando Cancha y Tarifa de Prueba ---")
-        tarifa_base = Tarifa(
-            id_tarifa=1, valor_hora=50000, dias_semana="Fines de semana",
-            valor_dia=10000, valor_ubicacion=5000, valor_tipo_jornada=15000,
+    def crear_cancha_nueva(self):
+        print("\n--- REGISTRO DE NUEVA CANCHA DESDE CERO ---")
+        
+        # Autogenerar un ID basado en la cantidad de canchas actuales
+        id_cancha = len(self.establecimiento.lista_canchas) + 101 
+        
+        nombre = input("Ingrese el nombre de la cancha (Ej: Cancha Múltiple 1): ")
+        tipo = input("Ingrese el tipo de cancha (Ej: Fútbol 5, Baloncesto): ")
+        horario = input("Ingrese el horario de disponibilidad (Ej: 08:00 - 22:00): ")
+        
+        print("\n-- Configuración de Tarifa Base --")
+        valor_h = float(input("Valor por hora ($): "))
+        dias = input("Días de aplicación (Ej: Lunes a Domingo): ")
+        valor_d = float(input("Recargo por día especial o fin de semana ($): "))
+        
+        # Creamos la tarifa con los datos ingresados
+        tarifa_nueva = Tarifa(
+            id_tarifa=id_cancha, 
+            valor_hora=valor_h, 
+            dias_semana=dias,
+            valor_dia=valor_d, 
+            valor_ubicacion=0, 
+            valor_tipo_jornada=0
         )
+        
+        # Calculamos el precio total usando el método de la clase Tarifa
+        precio_total = tarifa_nueva.calcular_tarifa()
+        
+        # Instanciamos la nueva cancha con los datos
         cancha_nueva = Cancha(
-            id_cancha=101, nombre_cancha="Cancha Sintética 1",
-            precio=tarifa_base.calcular_tarifa(), horario="08:00 - 22:00", tipo_cancha="Fútbol 5",
+            id_cancha=id_cancha, 
+            nombre_cancha=nombre, 
+            precio=precio_total, 
+            horario=horario, 
+            tipo_cancha=tipo
         )
+        
+        # La agregamos al establecimiento
         self.establecimiento.agregar_cancha(cancha_nueva)
-        print("Cancha y tarifa añadidas correctamente al establecimiento.")
+        print(f"\n✓ Cancha '{nombre}' registrada exitosamente con un precio base de ${precio_total:,.2f}.")
 
     def ver_canchas(self):
         print(f"\n--- Establecimiento: {self.establecimiento.nombre_establecimiento} ---")
@@ -403,7 +431,7 @@ class Principal:
             print("2. Modificar usuario")
             print("3. Eliminar usuario")
             print("4. Generar reportes")
-            print("5. Registrar cancha y tarifa (Configuración)")
+            print("5. Registrar una nueva cancha (Desde cero)") # Texto actualizado
             print("6. Ver canchas registradas")
             print("7. Cerrar sesión")
 
@@ -416,9 +444,10 @@ class Principal:
             elif opc == 3:
                 self.eliminar_usuario()
             elif opc == 4:
-                print("Generando reportes...")
+                administrador_actual.gestionar_reportes(self)
             elif opc == 5:
-                self.registrar_cancha_prueba()
+                # Conexión directa: el administrador registra la cancha
+                administrador_actual.registrar_cancha(self) 
             elif opc == 6:
                 self.ver_canchas()
             elif opc == 7:

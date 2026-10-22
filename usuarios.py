@@ -60,6 +60,9 @@ class Administrador(Usuarios):
         self.salario = salario
         self.direccion = direccion
 
+    def registrar_cancha(self, sistema):
+        sistema.crear_cancha_nueva()
+
     def gestionar_usuarios(self, sistema):
         print("Módulo de gestión de usuarios en desarrollo...")
 
