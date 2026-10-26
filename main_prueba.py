@@ -64,7 +64,7 @@ class Principal:
         conn = None
         try:
             nombre = input("Ingrese el nombre de la cancha (Ej: Cancha Múltiple 1): ")
-            tipo = input("Ingrese el tipo de cancha (Ej: Fútbol 5, Baloncesto): ")
+            tipo = input("Ingrese el tipo de cancha (Ej: Fútbol 5): ")
             horario = input("Ingrese el horario de disponibilidad (Ej: 08:00 - 22:00): ")
 
             print("\n-- Configuración de Tarifa Base --")
@@ -114,22 +114,9 @@ class Principal:
         conn = None
         try:
             fecha_apt = input("\nFecha apartada (YYYY-MM-DD): ")
-            h_inicio_str = input("Hora de inicio (Ej: 06:00 PM): ")
-            h_final_str = input("Hora final (Ej: 07:00 PM): ")
-
-            try:
-                hora_inicio_dt = datetime.datetime.strptime(h_inicio_str.strip(), "%I:%M %p")
-                hora_final_dt = datetime.datetime.strptime(h_final_str.strip(), "%I:%M %p")
-            except ValueError:
-                print("\n[ERROR] Formato de hora inválido. Use el formato HH:MM AM/PM (Ej: 06:00 PM).")
-                return
-
-            dur_seg = (hora_final_dt - hora_inicio_dt).total_seconds()
-            dur = dur_seg / 3600.0
-
-            if dur <= 0:
-                print("\n[ERROR] La hora final debe ser mayor a la hora inicial.")
-                return
+            h_inicio = input("Hora de inicio (Ej: 18:00): ")
+            h_final = input("Hora final (Ej: 19:00): ")
+            dur = float(input("Duración en horas (Ej: 1.0): "))
 
             if not self.establecimiento.lista_canchas:
                 print("No hay canchas disponibles.")
@@ -142,53 +129,41 @@ class Principal:
                 print("[ERROR] No se pudo identificar el cliente en sesión.")
                 return
 
-            nueva_reserva = Reservas(fecha_apt, h_inicio_str.strip(), h_final_str.strip(), dur, "Pendiente", 0.0, 0.0)
+            nueva_reserva = Reservas(fecha_apt, h_inicio, h_final, dur, "Pendiente", 0.0, 0.0)
             nueva_reserva.calcular(precio_hora)
             print(f"\nEl total de la reserva es: ${nueva_reserva.total_reserva:,.2f}")
-            try:
-                abono_ingresado = float(input("Ingrese el valor del abono a pagar ahora: "))
-            except ValueError:
-                print("\n[ERROR] Valor ingresado inválido. Cancelando pago...")
-                return
+            abono_ingresado = float(input("Ingrese el valor del abono a pagar ahora: "))
 
             print("\n--- SELECCIONE UN MÉTODO DE PAGO ---")
             print("1. Efectivo")
             print("2. Tarjeta")
             print("3. Transferencia")
-            try:
-                opc_pago = int(input("Ingrese el método de pago (1/2/3): "))
+            opc_pago = int(input("Ingrese el método de pago (1/2/3): "))
 
-                pago_valido = False
-                comprobante_ingresado = "N/A"
-                id_metodo_db = opc_pago
+            pago_valido = False
+            comprobante_ingresado = "N/A"
+            id_metodo_db = opc_pago
 
-                if opc_pago == 1:
-                    try:
-                        monto_rec = float(input("\nIngrese el monto recibido en efectivo: "))
-                    except ValueError:
-                        print("\n[ERROR] Valor ingresado inválido. Cancelando pago...")
-                        return
-                    pago_efectivo = Efectivo(id_metodopago=1, tipo_pago="Efectivo", descripcion="Pago en caja", id_efectivo=1, monto_recibido=monto_rec, cambio=0.0, estado="Pendiente")
-                    pago_valido = pago_efectivo.validarPago(abono_ingresado)
-                    comprobante_ingresado = f"EFECTIVO-{datetime.datetime.now().strftime('%H%M%S')}"
-                elif opc_pago == 2:
-                    tipo_tarjeta = input("\nTipo de tarjeta (Visa/Mastercard): ")
-                    titular = input("Nombre del titular: ")
-                    vencimiento = input("Fecha de vencimiento (MM/AA): ")
-                    cvv = input("Código de seguridad: ")
-                    pago_tarjeta = Tarjeta(id_metodopago=2, tipo_pago="Tarjeta", descripcion="Pago en datáfono", id_tarjeta=1, tipo_tarjeta=tipo_tarjeta, titular=titular, fecha_vencimiento=vencimiento, codigo_seguridad=cvv)
-                    pago_valido = pago_tarjeta.validarTarjeta()
-                    comprobante_ingresado = input("Ingrese el número de comprobante (voucher) del datáfono: ")
-                elif opc_pago == 3:
-                    banco = input("\nBanco de origen: ")
-                    pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", id_transferencia=1, banco_origen=banco, fecha=fecha_apt, valor=abono_ingresado, estado="completada")
-                    pago_valido = pago_transferencia.validarTransferencia()
-                    comprobante_ingresado = input("Ingrese el número de comprobante de la transferencia: ")
-                else:
-                    print("Opción de pago inválida.")
-                    return
-            except ValueError:
-                print("\n[ERROR] Valor ingresado inválido. Cancelando pago...")
+            if opc_pago == 1:
+                monto_rec = float(input("\nIngrese el monto recibido en efectivo: "))
+                pago_efectivo = Efectivo(id_metodopago=1, tipo_pago="Efectivo", descripcion="Pago en caja", id_efectivo=1, monto_recibido=monto_rec, cambio=0.0, estado="Pendiente")
+                pago_valido = pago_efectivo.validarPago(abono_ingresado)
+                comprobante_ingresado = f"EFECTIVO-{datetime.datetime.now().strftime('%H%M%S')}"
+            elif opc_pago == 2:
+                tipo_tarjeta = input("\nTipo de tarjeta (Visa/Mastercard): ")
+                titular = input("Nombre del titular: ")
+                vencimiento = input("Fecha de vencimiento (MM/AA): ")
+                cvv = input("Código de seguridad: ")
+                pago_tarjeta = Tarjeta(id_metodopago=2, tipo_pago="Tarjeta", descripcion="Pago en datáfono", id_tarjeta=1, tipo_tarjeta=tipo_tarjeta, titular=titular, fecha_vencimiento=vencimiento, codigo_seguridad=cvv)
+                pago_valido = pago_tarjeta.validarTarjeta()
+                comprobante_ingresado = input("Ingrese el número de comprobante (voucher) del datáfono: ")
+            elif opc_pago == 3:
+                banco = input("\nBanco de origen: ")
+                pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", id_transferencia=1, banco_origen=banco, fecha=fecha_apt, valor=abono_ingresado, estado="completada")
+                pago_valido = pago_transferencia.validarTransferencia()
+                comprobante_ingresado = input("Ingrese el número de comprobante de la transferencia: ")
+            else:
+                print("Opción de pago inválida.")
                 return
 
             if not pago_valido:
@@ -197,7 +172,7 @@ class Principal:
 
             conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO reservas (id_cliente, id_cancha, fecha_apartada, hora_inicio, hora_final, duracion, estado, total_reserva, abono) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (id_cliente_res, id_cancha_res, fecha_apt, h_inicio_str.strip(), h_final_str.strip(), dur, "Pendiente", nueva_reserva.total_reserva, abono_ingresado))
+            cursor.execute("INSERT INTO reservas (id_cliente, id_cancha, fecha_apartada, hora_inicio, hora_final, duracion, estado, total_reserva, abono) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (id_cliente_res, id_cancha_res, fecha_apt, h_inicio, h_final, dur, "Pendiente", nueva_reserva.total_reserva, abono_ingresado))
             id_reserva_db = cursor.lastrowid
             cursor.execute("INSERT INTO pagos (id_reserva, id_metodo_pago, fecha_pago, valor, comprobante, estado) VALUES (?, ?, ?, ?, ?, ?)", (id_reserva_db, id_metodo_db, fecha_apt, abono_ingresado, comprobante_ingresado, "Registrado"))
             cursor.execute("UPDATE reservas SET estado = 'Confirmada' WHERE id = ?", (id_reserva_db,))
@@ -209,7 +184,7 @@ class Principal:
             print(f"\nSaldo pendiente de la reserva: ${saldo_pendiente:,.2f}")
             print(f"✓ Reserva creada con éxito para {cliente_actual.nombre}.")
         except ValueError:
-            print("\n[ERROR] Se ingresó un valor numérico incorrecto. La reserva no fue creada.")
+            print("\n[ERROR] Se ingresó a valor numérico incorrecto. La reserva no fue creada.")
         except EOFError:
             print("\n[ERROR] No se pudo leer la entrada por teclado.")
         except sqlite3.Error as e:
@@ -279,7 +254,7 @@ class Principal:
 
     def ingresar_usuario(self):
         print("\nBIENVENIDO AL INGRESO DE USUARIOS")
-        user = input("\nIngrese su correo o nombre, ingresados en the registro: ")
+        user = input("\nIngrese su correo o nombre, ingresados en el registro: ")
         password = input("Ingrese su contraseña: ")
         conn = None
         try:
