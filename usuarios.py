@@ -10,9 +10,7 @@ class Usuarios:
         self.correo = correo
         self.password = password
         self.fecha_registro = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    def inicio_sesion(self):
-        print("Ingreso a la sesión de usuario")
+        self.id_usuario = None
 
 
 class Cliente(Usuarios):
@@ -20,7 +18,6 @@ class Cliente(Usuarios):
         super().__init__(nombre, apellido, documento, telefono, correo, password)
 
     def crear_reservas(self, sistema):
-        # Llama a la función del sistema y se pasa a sí mismo como el cliente actual
         sistema.crear_reserva_sistema(self)
 
     def consultar_reservas(self, sistema):
