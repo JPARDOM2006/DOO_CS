@@ -1,5 +1,6 @@
 import datetime
 
+
 class Usuarios:
     def __init__(self, nombre, apellido, documento, telefono, correo, password):
         self.nombre = nombre
@@ -12,6 +13,7 @@ class Usuarios:
 
     def inicio_sesion(self):
         print("Ingreso a la sesión de usuario")
+
 
 class Cliente(Usuarios):
     def __init__(self, nombre, apellido, documento, telefono, correo, password):
@@ -29,6 +31,7 @@ class Cliente(Usuarios):
 
     def cancelar_reservas(self, sistema):
         sistema.cancelar_mis_reservas(self)
+
 
 class Empleado(Usuarios):
     def __init__(self, nombre, apellido, documento, telefono, correo, password, cargo, salario, horario, direccion):
@@ -53,6 +56,7 @@ class Empleado(Usuarios):
     def registrar_mantenimiento(self, sistema):
         sistema.registrar_mantenimiento_cancha()
 
+
 class Administrador(Usuarios):
     def __init__(self, nombre, apellido, documento, telefono, correo, password, cargo, salario, direccion):
         super().__init__(nombre, apellido, documento, telefono, correo, password)
@@ -67,4 +71,7 @@ class Administrador(Usuarios):
         print("Módulo de gestión de usuarios en desarrollo...")
 
     def gestionar_reportes(self, sistema):
-        print("Generando reportes financieros y de ocupación...")
+        if hasattr(sistema, 'generar_reportes'):
+            sistema.generar_reportes()
+        else:
+            print("Generando reportes financieros y de ocupación...")

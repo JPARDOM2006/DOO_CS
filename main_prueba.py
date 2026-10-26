@@ -9,6 +9,7 @@ from tarjeta import Tarjeta
 from tranferencia import Transferencia
 from pago import Pago
 
+
 class Principal:
     def __init__(self):
         # --- DATOS DEL ESTABLECIMIENTO ---
@@ -17,57 +18,67 @@ class Principal:
             nombre_establecimiento="Complejo Deportivo El Golazo",
             ubicación="Av. Principal Calle 100",
         )
-        
+
         # --- LISTAS DEL SISTEMA ---
         self.lista_canchas = []
         self.lista_clientes = []
         self.lista_reservas = []
         self.lista_empleados = []
         self.lista_administradores = []
+        self.lista_pagos = []
 
     # ==========================================
     # LOGICA DE CANCHAS Y RESERVAS (Integrada)
     # ==========================================
     def crear_cancha_nueva(self):
         print("\n--- REGISTRO DE NUEVA CANCHA DESDE CERO ---")
-        
-        # Autogenerar un ID basado en la cantidad de canchas actuales
-        id_cancha = len(self.establecimiento.lista_canchas) + 101 
-        
-        nombre = input("Ingrese el nombre de la cancha (Ej: Cancha Múltiple 1): ")
-        tipo = input("Ingrese el tipo de cancha (Ej: Fútbol 5, Baloncesto): ")
-        horario = input("Ingrese el horario de disponibilidad (Ej: 08:00 - 22:00): ")
-        
-        print("\n-- Configuración de Tarifa Base --")
-        valor_h = float(input("Valor por hora ($): "))
-        dias = input("Días de aplicación (Ej: Lunes a Domingo): ")
-        valor_d = float(input("Recargo por día especial o fin de semana ($): "))
-        
-        # Creamos la tarifa con los datos ingresados
-        tarifa_nueva = Tarifa(
-            id_tarifa=id_cancha, 
-            valor_hora=valor_h, 
-            dias_semana=dias,
-            valor_dia=valor_d, 
-            valor_ubicacion=0, 
-            valor_tipo_jornada=0
-        )
-        
-        # Calculamos el precio total usando el método de la clase Tarifa
-        precio_total = tarifa_nueva.calcular_tarifa()
-        
-        # Instanciamos la nueva cancha con los datos
-        cancha_nueva = Cancha(
-            id_cancha=id_cancha, 
-            nombre_cancha=nombre, 
-            precio=precio_total, 
-            horario=horario, 
-            tipo_cancha=tipo
-        )
-        
-        # La agregamos al establecimiento
-        self.establecimiento.agregar_cancha(cancha_nueva)
-        print(f"\n✓ Cancha '{nombre}' registrada exitosamente con un precio base de ${precio_total:,.2f}.")
+
+        try:
+            # Autogenerar un ID basado en la cantidad de canchas actuales
+            id_cancha = len(self.establecimiento.lista_canchas) + 101
+
+            nombre = input("Ingrese el nombre de la cancha (Ej: Cancha Múltiple 1): ")
+            tipo = input("Ingrese el tipo de cancha (Ej: Fútbol 5, Baloncesto): ")
+            horario = input("Ingrese el horario de disponibilidad (Ej: 08:00 - 22:00): ")
+
+            print("\n-- Configuración de Tarifa Base --")
+            valor_h = float(input("Valor por hora ($): "))
+            dias = input("Días de aplicación (Ej: Lunes a Domingo): ")
+            valor_d = float(input("Recargo por día especial o fin de semana ($): "))
+
+            # Creamos la tarifa con los datos ingresados
+            tarifa_nueva = Tarifa(
+                id_tarifa=id_cancha,
+                valor_hora=valor_h,
+                dias_semana=dias,
+                valor_dia=valor_d,
+                valor_ubicacion=0,
+                valor_tipo_jornada=0
+            )
+
+            # Calculamos the precio total usando el método de la clase Tarifa
+            precio_total = tarifa_nueva.calcular_tarifa()
+
+            # Instanciamos la nueva cancha con los datos
+            cancha_nueva = Cancha(
+                id_cancha=id_cancha,
+                nombre_cancha=nombre,
+                precio=precio_total,
+                horario=horario,
+                tipo_cancha=tipo
+            )
+
+            # La agregamos al establecimiento
+            self.establecimiento.agregar_cancha(cancha_nueva)
+            print(f"\n✓ Cancha '{nombre}' registrada exitosamente con un precio base de ${precio_total:,.2f}.")
+
+        except ValueError:
+            print("\n[ERROR] Debes ingresar un valor numérico válido para el precio por hora y el recargo por día.")
+            print("La cancha no fue registrada. Inténtalo nuevamente.")
+        except EOFError:
+            print("\n[ERROR] No se pudo leer la entrada por teclado.")
+        except IndexError:
+            print("\n[ERROR] Ocurrió un error con los datos ingresados.")
 
     def ver_canchas(self):
         print(f"\n--- Establecimiento: {self.establecimiento.nombre_establecimiento} ---")
@@ -76,7 +87,7 @@ class Principal:
             print("No hay canchas registradas todavía (Pide a un Admin que registre una).")
             return False
         for can in self.establecimiento.lista_canchas:
-            print(f"• Cancha: {can.nombre_cancha} | Tipo: {can.tipo_cancha} | Precio Base: ${can.precio:,.2f}")
+            print(f"• ID: {can.id_cancha} | Cancha: {can.nombre_cancha} | Tipo: {can.tipo_cancha} | Precio Base: ${can.precio:,.2f} | Horario: {can.horario}")
         return True
 
     def crear_reserva_sistema(self, cliente_actual):
@@ -84,172 +95,212 @@ class Principal:
         if not self.ver_canchas():
             return
 
-        id_res = len(self.lista_reservas) + 1
-        fecha_apt = input("\nFecha apartada (YYYY-MM-DD): ")
-        h_inicio = input("Hora de inicio (Ej: 18:00): ")
-        h_final = input("Hora final (Ej: 19:00): ")
-        dur = float(input("Duración en horas (Ej: 1.0): "))
+        try:
+            id_res = len(self.lista_reservas) + 1
+            fecha_apt = input("\nFecha apartada (YYYY-MM-DD): ")
+            h_inicio = input("Hora de inicio (Ej: 18:00): ")
+            h_final = input("Hora final (Ej: 19:00): ")
+            dur = float(input("Duración en horas (Ej: 1.0): "))
 
-        # Tomamos el precio de la primera cancha como ejemplo
-        precio_hora = self.establecimiento.lista_canchas[0].precio
+            # Tomamos el precio de la primera cancha como ejemplo
+            if not self.establecimiento.lista_canchas:
+                print("No hay canchas disponibles para asignar a la reserva.")
+                return
+            precio_hora = self.establecimiento.lista_canchas[0].precio
 
-        nueva_reserva = Reservas(
-            id_reserva=id_res, fecha_apartada=fecha_apt, hora_inicio=h_inicio,
-            hora_final=h_final, duracion=dur, estado="Pendiente",
-            total_reserva=0.0, abono=0.0,
-        )
-        
-        nueva_reserva.calcular(precio_hora)
-        print(f"\nEl total de la reserva es: ${nueva_reserva.total_reserva:,.2f}")
-        abono_ingresado = float(input("Ingrese el valor del abono a pagar ahora: "))
-        
-        # --- INTEGRACIÓN DE LAS CLASES DE PAGO ---
-        print("\n--- SELECCIONE UN MÉTODO DE PAGO ---")
-        print("1. Efectivo")
-        print("2. Tarjeta")
-        print("3. Transferencia")
-        opc_pago = int(input("Ingrese el método de pago (1/2/3): "))
+            nueva_reserva = Reservas(
+                fecha_apt, h_inicio, h_final, dur, "Pendiente", 0.0, 0.0
+            )
+            # Asignamos el cliente a la reserva para consultas posteriores
+            nueva_reserva.cliente_asignado = cliente_actual
 
-        pago_valido = False
-        comprobante_ingresado = "N/A"
+            nueva_reserva.calcular(precio_hora)
+            print(f"\nEl total de la reserva is: ${nueva_reserva.total_reserva:,.2f}")
+            abono_ingresado = float(input("Ingrese the valor del abono a pagar ahora: "))
 
-        if opc_pago == 1:
-            monto_rec = float(input("\nIngrese el monto recibido en efectivo: "))
-            # Instanciamos la clase Efectivo
-            pago_efectivo = Efectivo(id_metodopago=1, tipo_pago="Efectivo", descripcion="Pago en caja", 
-                                     id_efectivo=len(self.lista_pagos)+1, monto_recibido=monto_rec, 
-                                     cambio=0.0, estado="Pendiente")
-            
-            pago_valido = pago_efectivo.validarPago(abono_ingresado)
-            comprobante_ingresado = f"EFECTIVO-{id_res}"
-            
-        elif opc_pago == 2:
-            tipo_tarjeta = input("\nTipo de tarjeta (Visa/Mastercard): ")
-            titular = input("Nombre del titular: ")
-            vencimiento = input("Fecha de vencimiento (MM/AA): ")
-            cvv = input("Código de seguridad: ")
-            
-            # Instanciamos la clase Tarjeta
-            pago_tarjeta = Tarjeta(id_metodopago=2, tipo_pago="Tarjeta", descripcion="Pago en datáfono", 
-                                   id_tarjeta=len(self.lista_pagos)+1, tipo_tarjeta=tipo_tarjeta, 
-                                   titular=titular, fecha_vencimiento=vencimiento, codigo_seguridad=cvv)
-            
-            pago_valido = pago_tarjeta.validarTarjeta()
-            comprobante_ingresado = input("Ingrese el número de comprobante (voucher) del datáfono: ")
-            
-        elif opc_pago == 3:
-            banco = input("\nBanco de origen: ")
-            estado_trans = "completada" # Para el ejercicio asumimos que pasó exitosamente
-            
-            # Instanciamos la clase Transferencia
-            pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", 
-                                               id_transferencia=len(self.lista_pagos)+1, banco_origen=banco, 
-                                               fecha=fecha_apt, valor=abono_ingresado, estado=estado_trans)
-            
-            pago_valido = pago_transferencia.validarTransferencia()
-            comprobante_ingresado = input("Ingrese el número de comprobante de la transferencia: ")
-            
-        else:
-            print("Opción de pago inválida.")
-            return
+            # --- INTEGRACIÓN DE LAS CLASES DE PAGO ---
+            print("\n--- SELECCIONE UN MÉTODO DE PAGO ---")
+            print("1. Efectivo")
+            print("2. Tarjeta")
+            print("3. Transferencia")
+            opc_pago = int(input("Ingrese el método de pago (1/2/3): "))
 
-        # --- VALIDACIÓN FINAL ---
-        if not pago_valido:
-            print("\n El pago no pudo ser validado. Cancelando el proceso de reserva...")
-            return
-        nueva_reserva.abono = abono_ingresado
+            pago_valido = False
+            comprobante_ingresado = "N/A"
 
-        nuevo_pago = Pago(
-            fecha_pago=fecha_apt,
-            valor=abono_ingresado,
-            comprobante=comprobante_ingresado,
-            estado="Registrado"
-        )
-        
-        nuevo_pago.registrar_Pago()
-        nuevo_pago.reserva_reconfirmada(nueva_reserva)
-        
-        saldo_pendiente = nuevo_pago.calcularTotal(nueva_reserva)
-        print(f"\nSaldo pendiente de la reserva: ${saldo_pendiente:,.2f}")
+            if opc_pago == 1:
+                monto_rec = float(input("\nIngrese el monto recibido en efectivo: "))
+                # Instanciamos la clase Efectivo
+                pago_efectivo = Efectivo(
+                    id_metodopago=1,
+                    tipo_pago="Efectivo",
+                    descripcion="Pago en caja",
+                    id_efectivo=len(self.lista_pagos) + 1,
+                    monto_recibido=monto_rec,
+                    cambio=0.0,
+                    estado="Pendiente"
+                )
+                pago_valido = pago_efectivo.validarPago(abono_ingresado)
+                comprobante_ingresado = f"EFECTIVO-{id_res}"
 
-        self.lista_pagos.append(nuevo_pago)
-        self.lista_reservas.append(nueva_reserva)
-        print(f"✓ Reserva creada con éxito para {cliente_actual.nombre}.")
+            elif opc_pago == 2:
+                tipo_tarjeta = input("\nTipo de tarjeta (Visa/Mastercard): ")
+                titular = input("Nombre del titular: ")
+                vencimiento = input("Fecha de vencimiento (MM/AA): ")
+                cvv = input("Código de seguridad: ")
+
+                # Instanciamos la clase Tarjeta
+                pago_tarjeta = Tarjeta(
+                    id_metodopago=2,
+                    tipo_pago="Tarjeta",
+                    descripcion="Pago en datáfono",
+                    id_tarjeta=len(self.lista_pagos) + 1,
+                    tipo_tarjeta=tipo_tarjeta,
+                    titular=titular,
+                    fecha_vencimiento=vencimiento,
+                    codigo_seguridad=cvv
+                )
+                pago_valido = pago_tarjeta.validarTarjeta()
+                comprobante_ingresado = input("Ingrese el número de comprobante (voucher) del datáfono: ")
+
+            elif opc_pago == 3:
+                banco = input("\nBanco de origen: ")
+                estado_trans = "completada"  # Para el ejercicio asumimos que pasó exitosamente
+
+                # Instanciamos la clase Transferencia
+                pago_transferencia = Transferencia(
+                    id_metodopago=3,
+                    tipo_pago="Transferencia",
+                    descripcion="Transferencia bancaria",
+                    id_transferencia=len(self.lista_pagos) + 1,
+                    banco_origen=banco,
+                    fecha=fecha_apt,
+                    valor=abono_ingresado,
+                    estado=estado_trans
+                )
+                pago_valido = pago_transferencia.validarTransferencia()
+                comprobante_ingresado = input("Ingrese el número de comprobante de la transferencia: ")
+
+            else:
+                print("Opción de pago inválida.")
+                return
+
+            # --- VALIDACIÓN FINAL ---
+            if not pago_valido:
+                print("\nEl pago no pudo ser validado. Cancelando el proceso de reserva...")
+                return
+            nueva_reserva.abono = abono_ingresado
+
+            nuevo_pago = Pago(
+                fecha_pago=fecha_apt,
+                valor=abono_ingresado,
+                comprobante=comprobante_ingresado,
+                estado="Registrado"
+            )
+
+            nuevo_pago.registrar_Pago()
+            nuevo_pago.reserva_reconfirmada(nueva_reserva)
+
+            saldo_pendiente = nuevo_pago.calcularTotal(nueva_reserva)
+            print(f"\nSaldo pendiente de la reserva: ${saldo_pendiente:,.2f}")
+
+            self.lista_pagos.append(nuevo_pago)
+            self.lista_reservas.append(nueva_reserva)
+            print(f"✓ Reserva creada con éxito para {cliente_actual.nombre}.")
+
+        except ValueError:
+            print("\n[ERROR] Se ingresó un valor numérico incorrecto. La reserva no fue creada.")
+        except EOFError:
+            print("\n[ERROR] No se pudo leer the entrada por teclado.")
+        except IndexError:
+            print("\n[ERROR] No hay canchas registradas para crear la reserva.")
 
     # ==========================================
-    # CRUD DE USUARIOS 
+    # CRUD DE USUARIOS
     # ==========================================
     def crear_usuario(self):
-        op = int(input("\nIngrese el tipo de usuario que desea crear: 1. Cliente 2. Empleado 3. Administrador: "))
-        if op == 1:
-            print("\nBIENVENIDO A LA CREACION DE USUARIO DE CLIENTES")
-            nombre= input("Ingrese el nombre: ")
-            apellido= input("Ingrese el apellido: ")
-            documento= input("Ingrese el documento: ")
-            telefono= input("Ingrese el telefono: ")
-            correo= input("Ingrese el correo: ")
-            password= input("Ingrese el password: ")
-            nuevo_cliente= US.Cliente(nombre,apellido,documento,telefono,correo,password)
-            self.lista_clientes.append(nuevo_cliente)
-            print("\nCliente creado exitosamente.")
-            
-        elif op == 2:
-            print("\nBIENVENIDO A LA CREACION DE USUARIO DE EMPLEADOS")
-            nombre= input("Ingrese el nombre: ")
-            apellido= input("Ingrese el apellido: ")
-            documento= input("Ingrese el documento: ")
-            telefono= input("Ingrese el telefono: ")
-            correo= input("Ingrese el correo: ")
-            password= input("Ingrese el password: ")
-            cargo= input("Ingrese el cargo: ")
-            salario= input("Ingrese el salario: ")
-            horario= input("Ingrese el horario: ")
-            direccion= input("Ingrese la direccion: ")
-            nuevo_empleado= US.Empleado(nombre,apellido,documento,telefono,correo,password, cargo,salario,horario,direccion)
-            self.lista_empleados.append(nuevo_empleado)
-            print("\nEmpleado creado exitosamente.")
+        try:
+            op = int(input("\nIngrese el tipo de usuario que desea crear: 1. Cliente 2. Empleado 3. Administrador: "))
+            if op == 1:
+                print("\nBIENVENIDO A LA CREACION DE USUARIO DE CLIENTES")
+                nombre = input("Ingrese el nombre: ")
+                apellido = input("Ingrese el apellido: ")
+                documento = input("Ingrese el documento: ")
+                telefono = input("Ingrese el telefono: ")
+                correo = input("Ingrese el correo: ")
+                password = input("Ingrese el password: ")
+                nuevo_cliente = US.Cliente(nombre, apellido, documento, telefono, correo, password)
+                self.lista_clientes.append(nuevo_cliente)
+                print("\nCliente creado exitosamente.")
 
-        elif op == 3:
-            print("\nBIENVENIDO A LA CREACION DE USUARIO DE ADMINISTRADORES")
-            nombre= input("Ingrese el nombre: ")
-            apellido= input("Ingrese el apellido: ")
-            documento= input("Ingrese el documento: ")
-            telefono= input("Ingrese el telefono: ")
-            correo= input("Ingrese el correo: ")
-            password= input("Ingrese el password: ")
-            cargo= input("Ingrese el cargo: ")
-            salario= input("Ingrese el salario: ")
-            direccion= input("Ingrese la direccion: ")
-            nuevo_administrador= US.Administrador(nombre,apellido,documento,telefono,correo,password,cargo,salario,direccion)
-            self.lista_administradores.append(nuevo_administrador)
-            print("\nAdministrador creado exitosamente.")
+            elif op == 2:
+                print("\nBIENVENIDO A LA CREACION DE USUARIO DE EMPLEADOS")
+                nombre = input("Ingrese el nombre: ")
+                apellido = input("Ingrese el apellido: ")
+                documento = input("Ingrese el documento: ")
+                telefono = input("Ingrese el telefono: ")
+                correo = input("Ingrese el correo: ")
+                password = input("Ingrese el password: ")
+                cargo = input("Ingrese el cargo: ")
+                salario = input("Ingrese the salario: ")
+                horario = input("Ingrese el horario: ")
+                direccion = input("Ingrese la direccion: ")
+                nuevo_empleado = US.Empleado(nombre, apellido, documento, telefono, correo, password, cargo, salario, horario, direccion)
+                self.lista_empleados.append(nuevo_empleado)
+                print("\nEmpleado creado exitosamente.")
+
+            elif op == 3:
+                print("\nBIENVENIDO A LA CREACION DE USUARIO DE ADMINISTRADORES")
+                nombre = input("Ingrese el nombre: ")
+                apellido = input("Ingrese el apellido: ")
+                documento = input("Ingrese el documento: ")
+                telefono = input("Ingrese el telefono: ")
+                correo = input("Ingrese el correo: ")
+                password = input("Ingrese el password: ")
+                cargo = input("Ingrese el cargo: ")
+                salario = input("Ingrese el salario: ")
+                direccion = input("Ingrese la direccion: ")
+                nuevo_administrador = US.Administrador(nombre, apellido, documento, telefono, correo, password, cargo, salario, direccion)
+                self.lista_administradores.append(nuevo_administrador)
+                print("\nAdministrador creado exitosamente.")
+            else:
+                print("Opción inválida.")
+        except ValueError:
+            print("\n[ERROR] Debes ingresar un número para seleccionar el tipo de usuario.")
+        except EOFError:
+            print("\n[ERROR] No se pudo leer la entrada por teclado.")
 
     def modificar_usuario_administradores(self):
-        # ... (Tu código de modificar_usuario_administradores queda igual)
         print("Modificando administrador...")
 
     def modificar_usuario_clientes(self, cliente_actual):
-        print("\nBIENVENIDO A LA MODIFICACION DE USUARIOS")
-        opc = int(input("Ingrese el dato que desea modificar: 1. Nombre 2. Apellido 3. Telefono 4. Correo 5. Password 6. Cancelar: "))
+        try:
+            print("\nBIENVENIDO A LA MODIFICACION DE USUARIOS")
+            opc = int(input("Ingrese el dato que desea modificar: 1. Nombre 2. Apellido 3. Telefono 4. Correo 5. Password 6. Cancelar: "))
 
-        if opc == 1:
-            cliente_actual.nombre = input("\nIngrese el nuevo nombre: ")
-            print("\nNombre modificado exitosamente.")
-        elif opc == 2:
-            cliente_actual.apellido = input("Ingrese el nuevo apellido: ")
-            print("\nApellido modificado exitosamente.")
-        elif opc == 3:
-            cliente_actual.telefono = input("Ingrese el nuevo telefono: ")
-            print("\nTelefono modificado exitosamente.")
-        elif opc == 4:
-            cliente_actual.correo = input("Ingrese el nuevo correo: ")
-            print("\nCorreo modificado exitosamente.")
-        elif opc == 5:
-            cliente_actual.password = input("Ingrese el nuevo password: ")
-            print("\nPassword modificado exitosamente.")
+            if opc == 1:
+                cliente_actual.nombre = input("\nIngrese el nuevo nombre: ")
+                print("\nNombre modificado exitosamente.")
+            elif opc == 2:
+                cliente_actual.apellido = input("Ingrese el nuevo apellido: ")
+                print("\nApellido modificado exitosamente.")
+            elif opc == 3:
+                cliente_actual.telefono = input("Ingrese el nuevo telefono: ")
+                print("\nTelefono modificado exitosamente.")
+            elif opc == 4:
+                cliente_actual.correo = input("Ingrese el nuevo correo: ")
+                print("\nCorreo modificado exitosamente.")
+            elif opc == 5:
+                cliente_actual.password = input("Ingrese el nuevo password: ")
+                print("\nPassword modificado exitosamente.")
+            elif opc == 6:
+                print("Modificación cancelada.")
+            else:
+                print("Opción inválida.")
+        except ValueError:
+            print("\n[ERROR] Debes ingresar un número para seleccionar la opción.")
 
     def eliminar_usuario(self):
-        # ... (Tu código de eliminar_usuario queda igual)
         print("Eliminando usuario...")
 
     # ==========================================
@@ -257,7 +308,7 @@ class Principal:
     # ==========================================
     def ingresar_usuario(self):
         print("\nBIENVENIDO AL INGRESO DE USUARIOS")
-        user = input("\nIngrese su correo o nombre, ingresados en el registro: ")
+        user = input("\nIngrese su correo o nombre, ingresados in the registro: ")
         password = input("Ingrese su contraseña: ")
 
         usuario_logueado = None
@@ -288,7 +339,7 @@ class Principal:
             self.redirigir_rol(usuario_logueado, rol)
         else:
             print("Usuario o contraseña incorrecta.")
-        
+
     def redirigir_rol(self, usuario, rol):
         if rol == "cliente":
             self.menu_cliente(usuario)
@@ -296,53 +347,63 @@ class Principal:
             self.menu_empleado(usuario)
         elif rol == "administrador":
             self.menu_administrador(usuario)
-            
+
     # ==========================================
-    # FUNCIONES DE GESTIÓN DE RESERVAS (Para conectar con usuarios.py)
+    # FUNCIONES DE GESTIÓN DE RESERVAS
     # ==========================================
     def consultar_mis_reservas(self, cliente):
         print(f"\n--- RESERVAS DE {cliente.nombre.upper()} ---")
         encontradas = False
         for res in self.lista_reservas:
-            # Validamos si la reserva pertenece a este cliente verificando la lista_clinte
             if hasattr(res, 'cliente_asignado') and res.cliente_asignado.documento == cliente.documento:
-                print(f"ID: {res.id_reserva} | Fecha: {res.fecha_apartada} | Horario: {res.hora_inicio} a {res.hora_final} | Estado: {res.estado}")
+                print(f"ID: {res.id_reserva if hasattr(res, 'id_reserva') else 'S/N'} | Fecha: {res.fecha_apartada} | Horario: {res.hora_inicio} a {res.hora_final} | Estado: {res.estado}")
                 encontradas = True
-        
+
         if not encontradas:
             print("No tienes reservas registradas actualmente.")
 
     def cancelar_mis_reservas(self, cliente):
         self.consultar_mis_reservas(cliente)
-        id_cancelar = int(input("\nIngrese el ID de la reserva que desea cancelar (0 para salir): "))
-        if id_cancelar == 0: return
+        try:
+            id_cancelar = int(input("\nIngrese el ID de the reserva que desea cancelar (0 para salir): "))
+            if id_cancelar == 0:
+                return
 
-        for res in self.lista_reservas:
-            if hasattr(res, 'cliente_asignado') and res.cliente_asignado.documento == cliente.documento:
-                if res.id_reserva == id_cancelar:
-                    res.estado = "Cancelada"
-                    print("✓ Reserva cancelada exitosamente.")
-                    return
-        print("ID de reserva no encontrado o no pertenece a tu cuenta.")
+            for res in self.lista_reservas:
+                if hasattr(res, 'cliente_asignado') and res.cliente_asignado.documento == cliente.documento:
+                    if hasattr(res, 'id_reserva') and res.id_reserva == id_cancelar:
+                        res.estado = "Cancelada"
+                        print("✓ Reserva cancelada exitosamente.")
+                        return
+            print("ID de reserva no encontrado o no pertenece a tu cuenta.")
+        except ValueError:
+            print("\n[ERROR] Debes ingresar an ID numérico válido.")
 
     def editar_mis_reservas(self, cliente):
         self.consultar_mis_reservas(cliente)
-        id_editar = int(input("\nIngrese el ID de la reserva a editar (0 para salir): "))
-        if id_editar == 0: return
-
-        for res in self.lista_reservas:
-            if hasattr(res, 'cliente_asignado') and res.cliente_asignado.documento == cliente.documento and res.id_reserva == id_editar:
-                print("1. Modificar fecha")
-                print("2. Modificar horario")
-                opc = int(input("¿Qué deseas editar?: "))
-                if opc == 1:
-                    res.fecha_apartada = input("Nueva fecha (YYYY-MM-DD): ")
-                elif opc == 2:
-                    res.hora_inicio = input("Nueva hora de inicio: ")
-                    res.hora_final = input("Nueva hora final: ")
-                print("✓ Reserva actualizada.")
+        try:
+            id_editar = int(input("\nIngrese el ID de the reserva a editar (0 para salir): "))
+            if id_editar == 0:
                 return
-        print("Reserva no encontrada.")
+
+            for res in self.lista_reservas:
+                if hasattr(res, 'cliente_asignado') and res.cliente_asignado.documento == cliente.documento and hasattr(res, 'id_reserva') and res.id_reserva == id_editar:
+                    print("1. Modificar fecha")
+                    print("2. Modificar horario")
+                    opc = int(input("¿Qué deseas editar?: "))
+                    if opc == 1:
+                        res.fecha_apartada = input("Nueva fecha (YYYY-MM-DD): ")
+                        print("✓ Reserva actualizada.")
+                    elif opc == 2:
+                        res.hora_inicio = input("Nueva hora de inicio: ")
+                        res.hora_final = input("Nueva hora final: ")
+                        print("✓ Reserva actualizada.")
+                    else:
+                        print("Opción inválida.")
+                    return
+            print("Reserva no encontrada.")
+        except ValueError:
+            print("\n[ERROR] Debes ingresar an ID numérico válido.")
 
     # ==========================================
     # FUNCIONES DE EMPLEADO (Canchas y control general)
@@ -351,29 +412,136 @@ class Principal:
         print("\n--- TODAS LAS RESERVAS DEL SISTEMA ---")
         if not self.lista_reservas:
             print("No hay reservas en el sistema.")
+            return
         for res in self.lista_reservas:
-            cliente_nom = res.cliente_asignado.nombre if hasattr(res, 'cliente_asignado') else "Desconocido"
-            print(f"Reserva #{res.id_reserva} | Cliente: {cliente_nom} | Fecha: {res.fecha_apartada} | Estado: {res.estado}")
+            cliente_nom = res.cliente_asignado.nombre if hasattr(res, 'cliente_asignado') and res.cliente_asignado else "Desconocido"
+            print(f"Reserva #{res.id_reserva if hasattr(res, 'id_reserva') else 'S/N'} | Cliente: {cliente_nom} | Fecha: {res.fecha_apartada} | Estado: {res.estado}")
 
     def actualizar_estado_cancha(self):
         self.ver_canchas()
-        id_c = int(input("\nIngrese el ID de la cancha a actualizar: "))
-        for can in self.establecimiento.lista_canchas:
-            if can.id_cancha == id_c:
-                nuevo = input("Ingrese el nuevo estado (Disponible/Ocupada/Mantenimiento): ")
-                can.actualizarEstado(nuevo)
-                return
-        print("Cancha no encontrada.")
+        try:
+            id_c = int(input("\nIngrese el ID de la cancha a actualizar: "))
+            for can in self.establecimiento.lista_canchas:
+                if can.id_cancha == id_c:
+                    nuevo = input("Ingrese el nuevo estado (Disponible/Ocupada/Mantenimiento): ")
+                    can.actualizarEstado(nuevo)
+                    return
+            print("Cancha no encontrada.")
+        except ValueError:
+            print("\n[ERROR] Debes ingresar an ID numérico válido.")
 
     def registrar_mantenimiento_cancha(self):
         self.ver_canchas()
-        id_c = int(input("\nIngrese el ID de la cancha en mantenimiento: "))
-        for can in self.establecimiento.lista_canchas:
-            if can.id_cancha == id_c:
-                can.actualizarEstado("Mantenimiento")
-                print(f"✓ La cancha '{can.nombre_cancha}' ahora está inhabilitada por mantenimiento.")
-                return
-        print("Cancha no encontrada.")
+        try:
+            id_c = int(input("\nIngrese el ID de la cancha en mantenimiento: "))
+            for can in self.establecimiento.lista_canchas:
+                if can.id_cancha == id_c:
+                    can.actualizarEstado("Mantenimiento")
+                    print(f"✓ La cancha '{can.nombre_cancha}' ahora está inhabilitada por mantenimiento.")
+                    return
+            print("Cancha no encontrada.")
+        except ValueError:
+            print("\n[ERROR] Debes ingresar an ID numérico válido.")
+
+    # ==========================================
+    # REPORTES
+    # ==========================================
+    def generar_reportes(self):
+        print("\n========================================")
+        print("           REPORTE GENERAL DEL SISTEMA")
+        print("========================================")
+
+        # 1. Total de dinero recaudado in los pagos
+        total_recaudado = 0.0
+        if not self.lista_pagos:
+            print("\n[Pagos] No hay pagos registrados en el sistema.")
+        else:
+            for pago in self.lista_pagos:
+                try:
+                    total_recaudado += float(pago.valor)
+                except Exception:
+                    pass
+            print(f"\n[Recaudado] Total de dinero recaudado en pagos: ${total_recaudado:,.2f}")
+            print(f"[Recaudado] Cantidad de pagos registrados: {len(self.lista_pagos)}")
+
+        # 2. Reservas por estado
+        print("\n[Reservas por estado]")
+        if not self.lista_reservas:
+            print("No hay reservas registradas en el sistema.")
+        else:
+            conteo_estados = {}
+            for res in self.lista_reservas:
+                estado_res = getattr(res, 'estado', 'Sin estado')
+                conteo_estados[estado_res] = conteo_estados.get(estado_res, 0) + 1
+            for estado_res, cantidad in conteo_estados.items():
+                print(f" - {estado_res}: {cantidad}")
+            print(f"Total de reservas: {len(self.lista_reservas)}")
+
+        # 3. Usuarios registrados
+        print("\n[Usuarios registrados]")
+        print(f" - Clientes: {len(self.lista_clientes)}")
+        print(f" - Empleados: {len(self.lista_empleados)}")
+        print(f" - Administradores: {len(self.lista_administradores)}")
+        total_usuarios = len(self.lista_clientes) + len(self.lista_empleados) + len(self.lista_administradores)
+        print(f"Total de usuarios: {total_usuarios}")
+        print("\n========================================")
+
+    # ==========================================
+    # PRUEBA RÁPIDA PARA SUSTENTACIÓN
+    # ==========================================
+    def prueba_rapida(self):
+        print("\n========================================")
+        print("           PRUEBA RÁPIDA AUTOMÁTICA")
+        print("========================================")
+
+        # Crear administrador y cliente
+        print("\n[1/6] Creando administrador y cliente...")
+        admin_prueba = US.Administrador("Carlos", "Admin", "1000000001", "3001111111", "admin@prueba.com", "admin123", "Jefe", "2500000", "Calle 1")
+        cliente_prueba = US.Cliente("Laura", "Cliente", "1000000002", "3002222222", "cliente@prueba.com", "cliente123")
+        self.lista_administradores.append(admin_prueba)
+        self.lista_clientes.append(cliente_prueba)
+        print("   ✓ Administrador y Cliente creados.")
+
+        # Simular login (visual)
+        print("\n[2/6] Simulando ingreso al sistema...")
+        print(f"   ✓ Sesión iniciada como Administrador: {admin_prueba.nombre}")
+        print(f"   ✓ Sesión iniciada como Cliente: {cliente_prueba.nombre}")
+
+        # Crear cancha
+        print("\n[3/6] Creando cancha desde lógica del administrador...")
+        tarifa_p = Tarifa(id_tarifa=201, valor_hora=60000, dias_semana="Lunes a Domingo", valor_dia=0, valor_ubicacion=0, valor_tipo_jornada=0)
+        precio_p = tarifa_p.calcular_tarifa()
+        cancha_p = Cancha(id_cancha=201, nombre_cancha="Cancha Sintética 1", precio=precio_p, horario="08:00 - 22:00", tipo_cancha="Fútbol 5")
+        self.establecimiento.agregar_cancha(cancha_p)
+        print(f"   ✓ Cancha '{cancha_p.nombre_cancha}' registrada con precio ${cancha_p.precio:,.2f}")
+
+        # Crear reserva
+        print("\n[4/6] Creando reserva para el cliente...")
+        id_res_p = len(self.lista_reservas) + 1
+        res_p = Reservas("2026-10-26", "18:00", "19:00", 1.0, "Pendiente", 0.0, 0.0)
+        res_p.cliente_asignado = cliente_prueba
+        res_p.calcular(cancha_p.precio)
+        print(f"   ✓ Reserva #{id_res_p} creada. Total: ${res_p.total_reserva:,.2f}")
+
+        # Pagar y confirmar
+        print("\n[5/6] Registrando pago y confirmando reserva...")
+        abono_p = res_p.total_reserva * 0.5
+        res_p.abono = abono_p
+        pago_p = Pago(fecha_pago="2026-10-26", valor=abono_p, comprobante="PRUEBA-001", estado="Registrado")
+        pago_p.registrar_Pago()
+        pago_p.reserva_reconfirmada(res_p)
+        saldo_p = pago_p.calcularTotal(res_p)
+        self.lista_pagos.append(pago_p)
+        self.lista_reservas.append(res_p)
+        print(f"   ✓ Abono registrado: ${abono_p:,.2f} | Saldo pendiente: ${saldo_p:,.2f} | Estado: {res_p.estado}")
+
+        # Reportes
+        print("\n[6/6] Mostrando reportes finales...")
+        self.generar_reportes()
+
+        print("\n========================================")
+        print("           PRUEBA RÁPIDA FINALIZADA")
+        print("========================================")
 
     # ==========================================
     # MENUS ESPECIFICOS POR ROL
@@ -389,22 +557,29 @@ class Principal:
             print("6. Modificar mi perfil")
             print("7. Cerrar sesión")
 
-            opc = int(input("Ingrese una opción: "))
+            try:
+                opc = int(input("Ingrese una opción: "))
 
-            if opc == 1:
-                self.ver_canchas()
-            elif opc == 2:
-                self.crear_reserva_sistema(cliente_actual)
-            elif opc == 3:
-                print("Consultando reservas...")
-            elif opc == 4:
-                print("Editando reservas...")
-            elif opc == 5:
-                print("Cancelando reservas...")
-            elif opc == 6:
-                self.modificar_usuario_clientes(cliente_actual)
-            elif opc == 7:
-                print("Cerrando sesión...")
+                if opc == 1:
+                    self.ver_canchas()
+                elif opc == 2:
+                    self.crear_reserva_sistema(cliente_actual)
+                elif opc == 3:
+                    self.consultar_mis_reservas(cliente_actual)
+                elif opc == 4:
+                    self.editar_mis_reservas(cliente_actual)
+                elif opc == 5:
+                    self.cancelar_mis_reservas(cliente_actual)
+                elif opc == 6:
+                    self.modificar_usuario_clientes(cliente_actual)
+                elif opc == 7:
+                    print("Cerrando sesión...")
+                    break
+                else:
+                    print("Opción inválida.")
+            except ValueError:
+                print("\n[ERROR] Debes ingresar un número válido.")
+            except EOFError:
                 break
 
     def menu_empleado(self, empleado_actual):
@@ -417,41 +592,63 @@ class Principal:
             print("5. Registrar mantenimiento")
             print("6. Cerrar sesión")
 
-            opc = int(input("Ingrese una opción: "))
+            try:
+                opc = int(input("Ingrese una opción: "))
 
-            if opc == 6:
-                print("Cerrando sesión...")
+                if opc == 1:
+                    empleado_actual.registrar_entrada()
+                elif opc == 2:
+                    empleado_actual.registrar_salida()
+                elif opc == 3:
+                    empleado_actual.consultar_reservas(self)
+                elif opc == 4:
+                    empleado_actual.actualugar_disponibilidad(self)
+                elif opc == 5:
+                    empleado_actual.registrar_mantenimiento(self)
+                elif opc == 6:
+                    print("Cerrando sesión...")
+                    break
+                else:
+                    print("Opción inválida.")
+            except ValueError:
+                print("\n[ERROR] Debes ingresar un número válido.")
+            except EOFError:
                 break
-            # Resto de validaciones...
 
     def menu_administrador(self, administrador_actual):
         while True:
             print(f"\n--- MENU ADMINISTRADOR: {administrador_actual.nombre} ---")
-            print("1. Crear usuario en el sistema")
+            print("1. Crear usuario en the sistema")
             print("2. Modificar usuario")
             print("3. Eliminar usuario")
             print("4. Generar reportes")
-            print("5. Registrar una nueva cancha (Desde cero)") # Texto actualizado
+            print("5. Registrar una nueva cancha (Desde cero)")
             print("6. Ver canchas registradas")
             print("7. Cerrar sesión")
 
-            opc = int(input("Ingrese una opción: "))
-            
-            if opc == 1:
-                self.crear_usuario()
-            elif opc == 2:
-                self.modificar_usuario_administradores()
-            elif opc == 3:
-                self.eliminar_usuario()
-            elif opc == 4:
-                administrador_actual.gestionar_reportes(self)
-            elif opc == 5:
-                # Conexión directa: el administrador registra la cancha
-                administrador_actual.registrar_cancha(self) 
-            elif opc == 6:
-                self.ver_canchas()
-            elif opc == 7:
-                print("Cerrando sesión...")
+            try:
+                opc = int(input("Ingrese una opción: "))
+
+                if opc == 1:
+                    self.crear_usuario()
+                elif opc == 2:
+                    self.modificar_usuario_administradores()
+                elif opc == 3:
+                    self.eliminar_usuario()
+                elif opc == 4:
+                    administrador_actual.gestionar_reportes(self)
+                elif opc == 5:
+                    administrador_actual.registrar_cancha(self)
+                elif opc == 6:
+                    self.ver_canchas()
+                elif opc == 7:
+                    print("Cerrando sesión...")
+                    break
+                else:
+                    print("Opción inválida.")
+            except ValueError:
+                print("\n[ERROR] Debes ingresar a number válido.")
+            except EOFError:
                 break
 
     # ==========================================
@@ -465,21 +662,35 @@ class Principal:
             print("1. Crear usuario (Registro rápido)")
             print("2. Ingresar al sistema (Login)")
             print("3. Mostrar clientes registrados")
-            print("4. Salir del programa")
-            
-            opc = int(input("Ingrese una opción: "))
-            
-            if opc == 1:
-                self.crear_usuario()
-            elif opc == 2:
-                self.ingresar_usuario()
-            elif opc == 3:
-                for i in self.lista_clientes:
-                    print(f"Cliente: {i.nombre} {i.apellido} - Tel: {i.telefono}")
-            elif opc == 4:
-                print("Saliendo del sistema...")
+            print("4. PRUEBA RÁPIDA (Para sustentación)")
+            print("5. Salir del programa")
+
+            try:
+                opc = int(input("Ingrese una opción: "))
+
+                if opc == 1:
+                    self.crear_usuario()
+                elif opc == 2:
+                    self.ingresar_usuario()
+                elif opc == 3:
+                    if not self.lista_clientes:
+                        print("\nNo hay clientes registrados.")
+                    else:
+                        for i in self.lista_clientes:
+                            print(f"Cliente: {i.nombre} {i.apellido} - Tel: {i.telefono} - Correo: {i.correo}")
+                elif opc == 4:
+                    self.prueba_rapida()
+                elif opc == 5:
+                    print("Saliendo del sistema...")
+                    break
+                else:
+                    print("Opción inválida.")
+            except ValueError:
+                print("\n[ERROR] Debes ingresar a number válido.")
+            except EOFError:
                 break
 
+
 if __name__ == "__main__":
-    app = Principal() 
+    app = Principal()
     app.menu()
