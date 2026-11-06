@@ -2,6 +2,7 @@ from cancha import Cancha
 from establecimiento import Establecimiento
 from reservas import Reservas
 from tarifa import Tarifa
+from horario import Horario
 import usuarios as US
 from efectivo import Efectivo
 from tarjeta import Tarjeta
@@ -65,26 +66,48 @@ class Principal:
         try:
             nombre = input("Ingrese el nombre de la cancha (Ej: Cancha Múltiple 1): ")
             tipo = input("Ingrese el tipo de cancha (Ej: Fútbol 5): ")
-            horario = input("Ingrese el horario de disponibilidad (Ej: 08:00 - 22:00): ")
+            horario_disp = input("Ingrese el horario de disponibilidad (Ej: 08:00 AM - 10:00 PM): ")
 
-            print("\n-- Configuración de Tarifa Base --")
+            print("\n-- Configuración de Horario y Tarifa --")
+            dias_semana = input("Días de aplicación (Ej: Lunes a Domingo): ")
+            tipo_dia = input("Tipo de día (Normal / Fin de semana / Festivo): ")
+            jornada = input("Jornada (Diurna / Nocturna): ")
+            h_inicio = input("Hora inicio franja (Ej: 06:00 PM): ")
+            h_final = input("Hora final franja (Ej: 10:00 PM): ")
             valor_h = float(input("Valor por hora ($): "))
-            dias = input("Días de aplicación (Ej: Lunes a Domingo): ")
-            valor_d = float(input("Recargo por día especial o fin de semana ($): "))
+            valor_d = float(input("Valor recargo por día/fin de semana ($): "))
 
-            tarifa_nueva = Tarifa(id_tarifa=0, valor_hora=valor_h, dias_semana=dias, valor_dia=valor_d, valor_ubicacion=0, valor_tipo_jornada=0)
+            # Instanciar Horario con valores de dinero y franjas
+            horario_obj = Horario(
+                id_horario=0,
+                dias_semana=dias_semana,
+                tipo_dia=tipo_dia,
+                jornada=jornada,
+                hora_inicio=h_inicio,
+                hora_final=h_final,
+                valor_h=valor_h,
+                valor_d=valor_d
+            )
+            # Instanciar Tarifa pasando el Horario (dependencia)
+            tarifa_nueva = Tarifa(horario_obj)
             precio_total = tarifa_nueva.calcular_tarifa()
 
             conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO tarifas (valor_hora, dias_semana, valor_dia, valor_ubicacion, valor_tipo_jornada) VALUES (?, ?, ?, ?, ?)", (valor_h, dias, valor_d, 0, 0))
+            cursor.execute(
+                "INSERT INTO tarifas (valor_hora, dias_semana, valor_dia, valor_ubicacion, valor_tipo_jornada) VALUES (?, ?, ?, ?, ?)",
+                (valor_h, dias_semana, valor_d, 0, 0)
+            )
             id_tarifa_db = cursor.lastrowid
-            cursor.execute("INSERT INTO canchas (id_establecimiento, id_tarifa, nombre_cancha, tipo_cancha, precio, horario, estado) VALUES (?, ?, ?, ?, ?, ?, ?)", (1, id_tarifa_db, nombre, tipo, precio_total, horario, "Disponible"))
+            cursor.execute(
+                "INSERT INTO canchas (id_establecimiento, id_tarifa, nombre_cancha, tipo_cancha, precio, horario, estado) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (1, id_tarifa_db, nombre, tipo, precio_total, horario_disp, "Disponible")
+            )
             conn.commit()
             self.cargar_canchas_desde_db()
             print(f"\n✓ Cancha '{nombre}' registrada exitosamente con un precio base de ${precio_total:,.2f}.")
         except ValueError:
-            print("\n[ERROR] Debes ingresar un valor numérico válido para el precio por hora y el recargo por día.")
+            print("\n[ERROR] Debes ingresar un valor numérico válido para el precio por hora y el recargo.")
             print("La cancha no fue registrada. Inténtalo nuevamente.")
         except EOFError:
             print("\n[ERROR] No se pudo leer la entrada por teclado.")
@@ -113,10 +136,29 @@ class Principal:
             return
         conn = None
         try:
-            fecha_apt = input("\nFecha apartada (YYYY-MM-DD): ")
-            h_inicio = input("Hora de inicio (Ej: 18:00): ")
-            h_final = input("Hora final (Ej: 19:00): ")
-            dur = float(input("Duración en horas (Ej: 1.0): "))
+            dia = int(input("Ingrese el día de este mes para la reserva: "))
+            # Usamos datetime.date.today() para obtener año y mes actual
+            hoy = datetime.date.today()
+            anno = hoy.year
+            mes = hoy.month
+            # Construimos YYYY-MM-DD con ceros a la izquierda si es necesario
+            fecha_apt = f"{anno}-{mes:02d}-{dia:02d}"
+
+            h_inicio_str = input("Hora de inicio (Ej: 06:00 PM): ")
+            h_final_str = input("Hora final (Ej: 07:00 PM): ")
+
+            try:
+                hora_inicio_dt = datetime.datetime.strptime(h_inicio_str.strip(), "%I:%M %p")
+                hora_final_dt = datetime.datetime.strptime(h_final_str.strip(), "%I:%M %p")
+            except ValueError:
+                print("\n[ERROR] Formato de hora inválido. Use el formato HH:MM AM/PM (Ej: 06:00 PM).")
+                return
+
+            dur_seg = (hora_final_dt - hora_inicio_dt).total_seconds()
+            dur = dur_seg / 3600.0
+            if dur <= 0:
+                print("\n[ERROR] La hora final debe ser mayor a la hora inicial.")
+                return
 
             if not self.establecimiento.lista_canchas:
                 print("No hay canchas disponibles.")
@@ -124,67 +166,130 @@ class Principal:
             precio_hora = self.establecimiento.lista_canchas[0].precio
             id_cancha_res = self.establecimiento.lista_canchas[0].id_cancha
             id_cliente_res = getattr(cliente_actual, 'id_usuario')
-
             if id_cliente_res is None:
                 print("[ERROR] No se pudo identificar el cliente en sesión.")
                 return
 
-            nueva_reserva = Reservas(fecha_apt, h_inicio, h_final, dur, "Pendiente", 0.0, 0.0)
-            nueva_reserva.calcular(precio_hora)
-            print(f"\nEl total de la reserva es: ${nueva_reserva.total_reserva:,.2f}")
-            abono_ingresado = float(input("Ingrese el valor del abono a pagar ahora: "))
+            # Extraemos la hora de apertura y cierre del atributo horario de la cancha
+            try:
+                # El horario tiene formato "08:00 AM - 10:00 PM"
+                horario_cancha = self.establecimiento.lista_canchas[0].horario
+                partes = horario_cancha.split(" - ")
+                if len(partes) == 2:
+                    # Intentamos parsear ambas horas como 24h primero, luego AM/PM
+                    try:
+                        hora_apertura = datetime.datetime.strptime(partes[0].strip(), "%H:%M")
+                        hora_cierre = datetime.datetime.strptime(partes[1].strip(), "%H:%M")
+                    except ValueError:
+                        # Si falla con 24h, intentamos con formato AM/PM
+                        hora_apertura = datetime.datetime.strptime(partes[0].strip(), "%I:%M %p")
+                        hora_cierre = datetime.datetime.strptime(partes[1].strip(), "%I:%M %p")
+                    
+                    # Validación: si la hora de inicio solicitada es menor a la apertura
+                    if hora_inicio_dt < hora_apertura:
+                        print(f"[ERROR] El horario solicitado está fuera de la jornada de atención de la cancha ({horario_cancha}).")
+                        return
+                    # Validación: si la hora final solicitada es mayor al cierre
+                    if hora_final_dt > hora_cierre:
+                        print(f"[ERROR] El horario solicitado está fuera de la jornada de atención de la cancha ({horario_cancha}).")
+                        return
+                else:
+                    # Formato inesperado, continuamos sin validación de horario específico
+                    print("[Advertencia] No se pudo parsear el horario de la cancha. Continuando sin validación de jornada.")
+            except Exception as e:
+                print(f"[ERROR] Problema al validar el horario de la cancha: {e}")
+                # Continuamos la reserva para no bloquear el sistema ante errores de parseo
+
+            # Validar disponibilidad con la clase Reservas (SELECT en main, lógica en clase)
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT hora_inicio, hora_final FROM reservas WHERE id_cancha = ? AND fecha_apartada = ? AND estado != 'Cancelada'",
+                (id_cancha_res, fecha_apt)
+            )
+            reservas_existentes = cursor.fetchall()
+            conn.close()
+            conn = None
+
+            reserva_temp = Reservas(fecha_apt, h_inicio_str.strip(), h_final_str.strip(), dur, "Pendiente", 0.0, 0.0)
+            if not reserva_temp.validar_disponibilidad(h_inicio_str.strip(), h_final_str.strip(), reservas_existentes):
+                print("\n[ERROR] La cancha no está disponible en el horario seleccionado (hay choque con otra reserva).")
+                return
+
+            reserva_temp.calcular(precio_hora)
+            print(f"\nEl total de la reserva es: ${reserva_temp.total_reserva:,.2f}")
+            try:
+                abono_ingresado = float(input("Ingrese el valor del abono a pagar ahora: "))
+            except ValueError:
+                print("\n[ERROR] Valor ingresado inválido. Cancelando pago...")
+                return
 
             print("\n--- SELECCIONE UN MÉTODO DE PAGO ---")
             print("1. Efectivo")
             print("2. Tarjeta")
             print("3. Transferencia")
-            opc_pago = int(input("Ingrese el método de pago (1/2/3): "))
+            try:
+                opc_pago = int(input("Ingrese el método de pago (1/2/3): "))
+                pago_valido = False
+                comprobante_ingresado = "N/A"
+                id_metodo_db = opc_pago
 
-            pago_valido = False
-            comprobante_ingresado = "N/A"
-            id_metodo_db = opc_pago
-
-            if opc_pago == 1:
-                monto_rec = float(input("\nIngrese el monto recibido en efectivo: "))
-                pago_efectivo = Efectivo(id_metodopago=1, tipo_pago="Efectivo", descripcion="Pago en caja", id_efectivo=1, monto_recibido=monto_rec, cambio=0.0, estado="Pendiente")
-                pago_valido = pago_efectivo.validarPago(abono_ingresado)
-                comprobante_ingresado = f"EFECTIVO-{datetime.datetime.now().strftime('%H%M%S')}"
-            elif opc_pago == 2:
-                tipo_tarjeta = input("\nTipo de tarjeta (Visa/Mastercard): ")
-                titular = input("Nombre del titular: ")
-                vencimiento = input("Fecha de vencimiento (MM/AA): ")
-                cvv = input("Código de seguridad: ")
-                pago_tarjeta = Tarjeta(id_metodopago=2, tipo_pago="Tarjeta", descripcion="Pago en datáfono", id_tarjeta=1, tipo_tarjeta=tipo_tarjeta, titular=titular, fecha_vencimiento=vencimiento, codigo_seguridad=cvv)
-                pago_valido = pago_tarjeta.validarTarjeta()
-                comprobante_ingresado = input("Ingrese el número de comprobante (voucher) del datáfono: ")
-            elif opc_pago == 3:
-                banco = input("\nBanco de origen: ")
-                pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", id_transferencia=1, banco_origen=banco, fecha=fecha_apt, valor=abono_ingresado, estado="completada")
-                pago_valido = pago_transferencia.validarTransferencia()
-                comprobante_ingresado = input("Ingrese el número de comprobante de la transferencia: ")
-            else:
-                print("Opción de pago inválida.")
+                if opc_pago == 1:
+                    try:
+                        monto_rec = float(input("\nIngrese el monto recibido en efectivo: "))
+                    except ValueError:
+                        print("\n[ERROR] Valor ingresado inválido. Cancelando pago...")
+                        return
+                    pago_efectivo = Efectivo(id_metodopago=1, tipo_pago="Efectivo", descripcion="Pago en caja", id_efectivo=1, monto_recibido=monto_rec, cambio=0.0, estado="Pendiente")
+                    pago_valido = pago_efectivo.validarPago(abono_ingresado)
+                    comprobante_ingresado = f"EFECTIVO-{datetime.datetime.now().strftime('%H%M%S')}"
+                elif opc_pago == 2:
+                    tipo_tarjeta = input("\nTipo de tarjeta (Visa/Mastercard): ")
+                    titular = input("Nombre del titular: ")
+                    vencimiento = input("Fecha de vencimiento (MM/AA): ")
+                    cvv = input("Código de seguridad: ")
+                    pago_tarjeta = Tarjeta(id_metodopago=2, tipo_pago="Tarjeta", descripcion="Pago en datáfono", id_tarjeta=1, tipo_tarjeta=tipo_tarjeta, titular=titular, fecha_vencimiento=vencimiento, codigo_seguridad=cvv)
+                    pago_valido = pago_tarjeta.validarTarjeta()
+                    comprobante_ingresado = input("Ingrese el número de comprobante (voucher) del datáfono: ")
+                elif opc_pago == 3:
+                    banco = input("\nBanco de origen: ")
+                    pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", id_transferencia=1, banco_origen=banco, fecha=fecha_apt, valor=abono_ingresado, estado="completada")
+                    pago_valido = pago_transferencia.validarTransferencia()
+                    comprobante_ingresado = input("Ingrese el número de comprobante de la transferencia: ")
+                else:
+                    print("Opción de pago inválida.")
+                    return
+            except ValueError:
+                print("\n[ERROR] Valor ingresado inválido. Cancelando pago...")
                 return
 
             if not pago_valido:
                 print("\nEl pago no pudo ser validado. Cancelando el proceso de reserva...")
                 return
 
+            reserva_temp.abono = abono_ingresado
+
             conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO reservas (id_cliente, id_cancha, fecha_apartada, hora_inicio, hora_final, duracion, estado, total_reserva, abono) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (id_cliente_res, id_cancha_res, fecha_apt, h_inicio, h_final, dur, "Pendiente", nueva_reserva.total_reserva, abono_ingresado))
+            cursor.execute(
+                "INSERT INTO reservas (id_cliente, id_cancha, fecha_apartada, hora_inicio, hora_final, duracion, estado, total_reserva, abono) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (id_cliente_res, id_cancha_res, fecha_apt, h_inicio_str.strip(), h_final_str.strip(), dur, "Pendiente", reserva_temp.total_reserva, abono_ingresado)
+            )
             id_reserva_db = cursor.lastrowid
-            cursor.execute("INSERT INTO pagos (id_reserva, id_metodo_pago, fecha_pago, valor, comprobante, estado) VALUES (?, ?, ?, ?, ?, ?)", (id_reserva_db, id_metodo_db, fecha_apt, abono_ingresado, comprobante_ingresado, "Registrado"))
+            cursor.execute(
+                "INSERT INTO pagos (id_reserva, id_metodo_pago, fecha_pago, valor, comprobante, estado) VALUES (?, ?, ?, ?, ?)",
+                (id_reserva_db, id_metodo_db, fecha_apt, abono_ingresado, comprobante_ingresado, "Registrado")
+            )
             cursor.execute("UPDATE reservas SET estado = 'Confirmada' WHERE id = ?", (id_reserva_db,))
             conn.commit()
 
             nuevo_pago = Pago(fecha_pago=fecha_apt, valor=abono_ingresado, comprobante=comprobante_ingresado, estado="Registrado")
             print("Reserva reconfirmada con el pago")
-            saldo_pendiente = nuevo_pago.calcularTotal(nueva_reserva)
+            saldo_pendiente = reserva_temp.calcular_excedente()
             print(f"\nSaldo pendiente de la reserva: ${saldo_pendiente:,.2f}")
             print(f"✓ Reserva creada con éxito para {cliente_actual.nombre}.")
         except ValueError:
-            print("\n[ERROR] Se ingresó a valor numérico incorrecto. La reserva no fue creada.")
+            print("\n[ERROR] Se ingresó un valor numérico incorrecto. La reserva no fue creada.")
         except EOFError:
             print("\n[ERROR] No se pudo leer la entrada por teclado.")
         except sqlite3.Error as e:
@@ -212,20 +317,31 @@ class Principal:
 
             if op == 1:
                 print("\nBIENVENIDO A LA CREACION DE USUARIO DE CLIENTES")
-                cursor.execute("INSERT INTO usuarios (nombre, apellido, documento, telefono, correo, password, tipo_usuario, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (nombre, apellido, documento, telefono, correo, password, "cliente", fecha_reg))
-                id_usuario = cursor.lastrowid
-                cursor.execute("INSERT INTO clientes (id_usuario) VALUES (?)", (id_usuario,))
+                nuevo_usuario = US.Cliente(nombre, apellido, documento, telefono, correo, password)
+                cursor.execute(
+                    "INSERT INTO usuarios (nombre, apellido, documento, telefono, correo, password, tipo_usuario, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (nombre, apellido, documento, telefono, correo, password, "cliente", fecha_reg)
+                )
+                nuevo_usuario.id_usuario = cursor.lastrowid
+                cursor.execute("INSERT INTO clientes (id_usuario) VALUES (?)", (nuevo_usuario.id_usuario,))
                 conn.commit()
                 print("\nCliente creado exitosamente.")
             elif op == 2:
                 print("\nBIENVENIDO A LA CREACION DE USUARIO DE EMPLEADOS")
                 cargo = input("Ingrese el cargo: ")
                 salario = input("Ingrese el salario: ")
-                horario = input("Ingrese el horario: ")
+                horario_emp = input("Ingrese el horario: ")
                 direccion = input("Ingrese la direccion: ")
-                cursor.execute("INSERT INTO usuarios (nombre, apellido, documento, telefono, correo, password, tipo_usuario, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (nombre, apellido, documento, telefono, correo, password, "empleado", fecha_reg))
-                id_usuario = cursor.lastrowid
-                cursor.execute("INSERT INTO empleados (id_usuario, cargo, salario, horario, direccion) VALUES (?, ?, ?, ?, ?)", (id_usuario, cargo, salario, horario, direccion))
+                nuevo_usuario = US.Empleado(nombre, apellido, documento, telefono, correo, password, cargo, salario, horario_emp, direccion)
+                cursor.execute(
+                    "INSERT INTO usuarios (nombre, apellido, documento, telefono, correo, password, tipo_usuario, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (nombre, apellido, documento, telefono, correo, password, "empleado", fecha_reg)
+                )
+                nuevo_usuario.id_usuario = cursor.lastrowid
+                cursor.execute(
+                    "INSERT INTO empleados (id_usuario, cargo, salario, horario, direccion) VALUES (?, ?, ?, ?, ?)",
+                    (nuevo_usuario.id_usuario, cargo, salario, horario_emp, direccion)
+                )
                 conn.commit()
                 print("\nEmpleado creado exitosamente.")
             elif op == 3:
@@ -233,9 +349,16 @@ class Principal:
                 cargo = input("Ingrese el cargo: ")
                 salario = input("Ingrese el salario: ")
                 direccion = input("Ingrese la direccion: ")
-                cursor.execute("INSERT INTO usuarios (nombre, apellido, documento, telefono, correo, password, tipo_usuario, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (nombre, apellido, documento, telefono, correo, password, "administrador", fecha_reg))
-                id_usuario = cursor.lastrowid
-                cursor.execute("INSERT INTO administradores (id_usuario, cargo, salario, direccion) VALUES (?, ?, ?, ?)", (id_usuario, cargo, salario, direccion))
+                nuevo_usuario = US.Administrador(nombre, apellido, documento, telefono, correo, password, cargo, salario, direccion)
+                cursor.execute(
+                    "INSERT INTO usuarios (nombre, apellido, documento, telefono, correo, password, tipo_usuario, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (nombre, apellido, documento, telefono, correo, password, "administrador", fecha_reg)
+                )
+                nuevo_usuario.id_usuario = cursor.lastrowid
+                cursor.execute(
+                    "INSERT INTO administradores (id_usuario, cargo, salario, direccion) VALUES (?, ?, ?, ?)",
+                    (nuevo_usuario.id_usuario, cargo, salario, direccion)
+                )
                 conn.commit()
                 print("\nAdministrador creado exitosamente.")
             else:
@@ -254,13 +377,16 @@ class Principal:
 
     def ingresar_usuario(self):
         print("\nBIENVENIDO AL INGRESO DE USUARIOS")
-        user = input("\nIngrese su correo o nombre, ingresados en el registro: ")
+        user = input("\nIngrese su correo o nombre, ingresados en the registro: ")
         password = input("Ingrese su contraseña: ")
         conn = None
         try:
             conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
-            cursor.execute("SELECT id, nombre, apellido, documento, telefono, correo, password, tipo_usuario FROM usuarios WHERE (correo = ? OR nombre = ?) AND password = ?", (user, user, password))
+            cursor.execute(
+                "SELECT id, nombre, apellido, documento, telefono, correo, password, tipo_usuario FROM usuarios WHERE (correo = ? OR nombre = ?) AND password = ?",
+                (user, user, password)
+            )
             row = cursor.fetchone()
             if not row:
                 print("Usuario o contraseña incorrecta.")
@@ -303,13 +429,18 @@ class Principal:
         try:
             conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
-            cursor.execute("SELECT r.id, r.fecha_apartada, r.hora_inicio, r.hora_final, r.estado, c.nombre_cancha FROM reservas r LEFT JOIN canchas c ON c.id = r.id_cancha WHERE r.id_cliente = ?", (getattr(cliente, 'id_usuario'),))
+            cursor.execute(
+                "SELECT r.id, r.fecha_apartada, r.hora_inicio, r.hora_final, r.estado, c.nombre_cancha, r.total_reserva, r.abono FROM reservas r LEFT JOIN canchas c ON c.id = r.id_cancha WHERE r.id_cliente = ?",
+                (getattr(cliente, 'id_usuario'),)
+            )
             rows = cursor.fetchall()
             if not rows:
                 print("No tienes reservas registradas actualmente.")
                 return
             for row in rows:
-                print(f"ID: {row[0]} | Cancha: {row[5]} | Fecha: {row[1]} | Horario: {row[2]} a {row[3]} | Estado: {row[4]}")
+                res_obj = Reservas(row[1], row[2], row[3], 0, row[4], row[6] or 0, row[7] or 0)
+                saldo = res_obj.calcular_excedente()
+                print(f"ID: {row[0]} | Cancha: {row[5]} | Fecha: {row[1]} | Horario: {row[2]} a {row[3]} | Estado: {row[4]} | Saldo: ${saldo:,.2f}")
         except sqlite3.Error as e:
             print(f"[DB ERROR] {e}")
         finally:
@@ -322,13 +453,17 @@ class Principal:
         try:
             conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
-            cursor.execute("SELECT r.id, u.nombre, u.apellido, c.nombre_cancha, r.fecha_apartada, r.hora_inicio, r.hora_final, r.estado FROM reservas r LEFT JOIN usuarios u ON u.id = r.id_cliente LEFT JOIN canchas c ON c.id = r.id_cancha ORDER BY r.id")
+            cursor.execute(
+                "SELECT r.id, u.nombre, u.apellido, c.nombre_cancha, r.fecha_apartada, r.hora_inicio, r.hora_final, r.estado, r.total_reserva, r.abono FROM reservas r LEFT JOIN usuarios u ON u.id = r.id_cliente LEFT JOIN canchas c ON c.id = r.id_cancha ORDER BY r.id"
+            )
             rows = cursor.fetchall()
             if not rows:
                 print("No hay reservas en el sistema.")
                 return
             for row in rows:
-                print(f"Reserva #{row[0]} | Cliente: {row[1]} {row[2]} | Cancha: {row[3]} | Fecha: {row[4]} {row[5]}-{row[6]} | Estado: {row[7]}")
+                res_obj = Reservas(row[4], row[5], row[6], 0, row[7], row[8] or 0, row[9] or 0)
+                saldo = res_obj.calcular_excedente()
+                print(f"Reserva #{row[0]} | Cliente: {row[1]} {row[2]} | Cancha: {row[3]} | Fecha: {row[4]} {row[5]}-{row[6]} | Estado: {row[7]} | Saldo: ${saldo:,.2f}")
         except sqlite3.Error as e:
             print(f"[DB ERROR] {e}")
         finally:
@@ -388,13 +523,21 @@ class Principal:
             print("7. Cerrar sesión")
             try:
                 opc = int(input("Ingrese una opción: "))
-                if opc == 1: self.ver_canchas()
-                elif opc == 2: self.crear_reserva_sistema(cliente_actual)
-                elif opc == 3: self.consultar_mis_reservas(cliente_actual)
-                elif opc == 7: print("Cerrando sesión..."); break
-                else: print("Opción inválida.")
-            except ValueError: print("\n[ERROR] Debes ingresar a número válido.")
-            except EOFError: break
+                if opc == 1:
+                    self.ver_canchas()
+                elif opc == 2:
+                    self.crear_reserva_sistema(cliente_actual)
+                elif opc == 3:
+                    self.consultar_mis_reservas(cliente_actual)
+                elif opc == 7:
+                    print("Cerrando sesión...");
+                    break
+                else:
+                    print("Opción inválida.")
+            except ValueError:
+                print("\n[ERROR] Debes ingresar a número válido.")
+            except EOFError:
+                break
 
     def menu_empleado(self, empleado_actual):
         while True:
@@ -407,13 +550,21 @@ class Principal:
             print("6. Cerrar sesión")
             try:
                 opc = int(input("Ingrese una opción: "))
-                if opc == 1: empleado_actual.registrar_entrada()
-                elif opc == 2: empleado_actual.registrar_salida()
-                elif opc == 3: empleado_actual.consultar_reservas(self)
-                elif opc == 6: print("Cerrando sesión..."); break
-                else: print("Opción inválida.")
-            except ValueError: print("\n[ERROR] Debes ingresar a número válido.")
-            except EOFError: break
+                if opc == 1:
+                    empleado_actual.registrar_entrada()
+                elif opc == 2:
+                    empleado_actual.registrar_salida()
+                elif opc == 3:
+                    empleado_actual.consultar_reservas(self)
+                elif opc == 6:
+                    print("Cerrando sesión...");
+                    break
+                else:
+                    print("Opción inválida.")
+            except ValueError:
+                print("\n[ERROR] Debes ingresar a número válido.")
+            except EOFError:
+                break
 
     def menu_administrador(self, administrador_actual):
         while True:
@@ -427,14 +578,23 @@ class Principal:
             print("7. Cerrar sesión")
             try:
                 opc = int(input("Ingrese una opción: "))
-                if opc == 1: self.crear_usuario()
-                elif opc == 4: administrador_actual.gestionar_reportes(self)
-                elif opc == 5: administrador_actual.registrar_cancha(self)
-                elif opc == 6: self.ver_canchas()
-                elif opc == 7: print("Cerrando sesión..."); break
-                else: print("Opción inválida.")
-            except ValueError: print("\n[ERROR] Debes ingresar a número válido.")
-            except EOFError: break
+                if opc == 1:
+                    self.crear_usuario()
+                elif opc == 4:
+                    administrador_actual.gestionar_reportes(self)
+                elif opc == 5:
+                    administrador_actual.registrar_cancha(self)
+                elif opc == 6:
+                    self.ver_canchas()
+                elif opc == 7:
+                    print("Cerrando sesión...");
+                    break
+                else:
+                    print("Opción inválida.")
+            except ValueError:
+                print("\n[ERROR] Debes ingresar a número válido.")
+            except EOFError:
+                break
 
     def menu(self):
         while True:
@@ -447,8 +607,10 @@ class Principal:
             print("4. Salir del programa")
             try:
                 opc = int(input("Ingrese una opción: "))
-                if opc == 1: self.crear_usuario()
-                elif opc == 2: self.ingresar_usuario()
+                if opc == 1:
+                    self.crear_usuario()
+                elif opc == 2:
+                    self.ingresar_usuario()
                 elif opc == 3:
                     conn = None
                     try:
@@ -456,15 +618,23 @@ class Principal:
                         cursor = conn.cursor()
                         cursor.execute("SELECT nombre, apellido, telefono, correo FROM usuarios WHERE tipo_usuario='cliente'")
                         rows = cursor.fetchall()
-                        if not rows: print("\nNo hay clientes registrados.")
+                        if not rows:
+                            print("\nNo hay clientes registrados.")
                         else:
-                            for i in rows: print(f"Cliente: {i[0]} {i[1]} - Tel: {i[2]} - Correo: {i[3]}")
+                            for i in rows:
+                                print(f"Cliente: {i[0]} {i[1]} - Tel: {i[2]} - Correo: {i[3]}")
                     finally:
-                        if conn: conn.close()
-                elif opc == 4: print("Saliendo del sistema..."); break
-                else: print("Opción inválida.")
-            except ValueError: print("\n[ERROR] Debes ingresar a número válido.")
-            except EOFError: break
+                        if conn:
+                            conn.close()
+                elif opc == 4:
+                    print("Saliendo del sistema...");
+                    break
+                else:
+                    print("Opción inválida.")
+            except ValueError:
+                print("\n[ERROR] Debes ingresar a número válido.")
+            except EOFError:
+                break
 
 
 if __name__ == "__main__":
