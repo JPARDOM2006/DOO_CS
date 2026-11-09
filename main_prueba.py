@@ -235,27 +235,24 @@ class Principal:
                 id_metodo_db = opc_pago
 
                 if opc_pago == 1:
-                    try:
-                        monto_rec = float(input("\nIngrese el monto recibido en efectivo: "))
-                    except ValueError:
-                        print("\n[ERROR] Valor ingresado inválido. Cancelando pago...")
-                        return
-                    pago_efectivo = Efectivo(id_metodopago=1, tipo_pago="Efectivo", descripcion="Pago en caja", id_efectivo=1, monto_recibido=monto_rec, cambio=0.0, estado="Pendiente")
+                    pago_efectivo = Efectivo(id_metodopago=1, tipo_pago="Efectivo", descripcion="Pago en caja", id_efectivo=1, monto_recibido=abono_ingresado, cambio=0.0, estado="Pendiente")
                     pago_valido = pago_efectivo.validarPago(abono_ingresado)
                     comprobante_ingresado = f"EFECTIVO-{datetime.datetime.now().strftime('%H%M%S')}"
                 elif opc_pago == 2:
-                    tipo_tarjeta = input("\nTipo de tarjeta (Visa/Mastercard): ")
+                    tipo_tarjeta = "Visa"
                     titular = input("Nombre del titular: ")
                     vencimiento = input("Fecha de vencimiento (MM/AA): ")
                     cvv = input("Código de seguridad: ")
                     pago_tarjeta = Tarjeta(id_metodopago=2, tipo_pago="Tarjeta", descripcion="Pago en datáfono", id_tarjeta=1, tipo_tarjeta=tipo_tarjeta, titular=titular, fecha_vencimiento=vencimiento, codigo_seguridad=cvv)
                     pago_valido = pago_tarjeta.validarTarjeta()
-                    comprobante_ingresado = input("Ingrese el número de comprobante (voucher) del datáfono: ")
+                    comprobante_ingresado = f"VOUCHER-{datetime.datetime.now().strftime('%H%M%S')}"
+                    print(f"\n¡Pago con tarjeta procesado con éxito!\nHas pagado un abono de ${abono_ingresado:,.2f}.\nEstaremos pendientes cuando desees cancelar el total de la reserva.")
                 elif opc_pago == 3:
                     banco = input("\nBanco de origen: ")
                     pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", id_transferencia=1, banco_origen=banco, fecha=fecha_apt, valor=abono_ingresado, estado="completada")
                     pago_valido = pago_transferencia.validarTransferencia()
-                    comprobante_ingresado = input("Ingrese el número de comprobante de la transferencia: ")
+                    comprobante_ingresado = f"TRANSF-{datetime.datetime.now().strftime('%H%M%S')}"
+                    print(f"\n¡Transferencia validada con éxito!\nHas registrado un abono de ${abono_ingresado:,.2f}.\nEstado: Abono registrado correctamente.")
                 else:
                     print("Opción de pago inválida.")
                     return
@@ -277,7 +274,7 @@ class Principal:
             )
             id_reserva_db = cursor.lastrowid
             cursor.execute(
-                "INSERT INTO pagos (id_reserva, id_metodo_pago, fecha_pago, valor, comprobante, estado) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO pagos (id_reserva, id_metodo_pago, fecha_pago, valor, comprobante, estado) VALUES (?, ?, ?, ?, ?, ?)",
                 (id_reserva_db, id_metodo_db, fecha_apt, abono_ingresado, comprobante_ingresado, "Registrado")
             )
             cursor.execute("UPDATE reservas SET estado = 'Confirmada' WHERE id = ?", (id_reserva_db,))
@@ -447,6 +444,152 @@ class Principal:
             if conn:
                 conn.close()
 
+    def editar_mis_reservas(self, cliente):
+        print("\n--- EDITAR MIS RESERVAS ---")
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, fecha_apartada, hora_inicio, hora_final, estado, id_cancha FROM reservas WHERE id_cliente = ? AND estado != 'Cancelada'",
+                (cliente.id_usuario,)
+            )
+            rows = cursor.fetchall()
+            if not rows:
+                print("No tienes reservas activas para editar.")
+                return
+            for row in rows:
+                print(f"ID: {row[0]} | Cancha: {row[5]} | Fecha: {row[1]} | Horario: {row[2]} a {row[3]} | Estado: {row[4]}")
+            id_res = int(input("\nIngrese el ID de la reserva a editar: "))
+            seleccionada = None
+            for row in rows:
+                if row[0] == id_res:
+                    seleccionada = row
+            if seleccionada is None:
+                print("[ERROR] La reserva no existe o no pertenece a tu cuenta.")
+                return
+            dia = int(input("Ingrese el nuevo día de este mes para la reserva: "))
+            hoy = datetime.date.today()
+            try:
+                fecha_nueva_dt = datetime.date(hoy.year, hoy.month, dia)
+            except ValueError:
+                print("[ERROR] Las modificaciones de reservas deben hacerse con al menos un día de anticipación.")
+                return
+            if fecha_nueva_dt <= hoy:
+                print("[ERROR] Las modificaciones de reservas deben hacerse con al menos un día de anticipación.")
+                return
+            fecha_nueva = f"{hoy.year}-{hoy.month:02d}-{dia:02d}"
+            nueva_inicio = input("Nueva hora de inicio (Ej: 06:00 PM): ")
+            nueva_final = input("Nueva hora final (Ej: 07:00 PM): ")
+            hi = datetime.datetime.strptime(nueva_inicio.strip(), "%I:%M %p")
+            hf = datetime.datetime.strptime(nueva_final.strip(), "%I:%M %p")
+            if hi >= hf:
+                print("[ERROR] La hora final debe ser mayor a la hora inicial.")
+                return
+            hora_apertura = datetime.time(8, 0)
+            hora_cierre = datetime.time(22, 0)
+            if hi.time() < hora_apertura or hf.time() > hora_cierre:
+                print("[ERROR] La reserva debe estar dentro del horario de operación del establecimiento (08:00 - 22:00).")
+                return
+            dur_nueva = (hf - hi).total_seconds() / 3600.0
+            cursor.execute("SELECT precio FROM canchas WHERE id = ?", (seleccionada[5],))
+            fila = cursor.fetchone()
+            precio_hora = fila[0] if fila and fila[0] else 0.0
+            total_nuevo = dur_nueva * precio_hora
+            cursor.execute(
+                "UPDATE reservas SET fecha_apartada = ?, hora_inicio = ?, hora_final = ?, duracion = ?, total_reserva = ? WHERE id = ? AND id_cliente = ?",
+                (fecha_nueva, nueva_inicio.strip(), nueva_final.strip(), dur_nueva, total_nuevo, id_res, cliente.id_usuario)
+            )
+            conn.commit()
+            print(f"\n✓ Reserva #{id_res} actualizada con éxito.")
+        except ValueError:
+            print("\n[ERROR] Se ingresó un valor numérico incorrecto. La reserva no fue actualizada.")
+        except sqlite3.Error as e:
+            print(f"[DB ERROR] {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                conn.close()
+
+    def cancelar_mis_reservas(self, cliente):
+        print("\n--- CANCELAR RESERVAS ---")
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, fecha_apartada, hora_inicio, hora_final, estado FROM reservas WHERE id_cliente = ? AND estado != 'Cancelada'",
+                (cliente.id_usuario,)
+            )
+            rows = cursor.fetchall()
+            if not rows:
+                print("No tienes reservas activas para cancelar.")
+                return
+            for row in rows:
+                print(f"ID: {row[0]} | Fecha: {row[1]} | Horario: {row[2]} a {row[3]} | Estado: {row[4]}")
+            id_res = int(input("\nIngrese el ID de la reserva a cancelar: "))
+            cursor.execute(
+                "UPDATE reservas SET estado = 'Cancelada' WHERE id = ? AND id_cliente = ?",
+                (id_res, cliente.id_usuario)
+            )
+            if cursor.rowcount == 0:
+                print("[ERROR] La reserva no existe o no pertenece a tu cuenta.")
+                return
+            conn.commit()
+            print(f"\n✓ Reserva #{id_res} cancelada con éxito. Estado: Cancelada.")
+        except ValueError:
+            print("\n[ERROR] Debes ingresar a número válido.")
+        except sqlite3.Error as e:
+            print(f"[DB ERROR] {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                conn.close()
+
+    def modificar_perfil(self, cliente_actual):
+        print(f"\n--- MODIFICAR MI PERFIL: {cliente_actual.nombre} {cliente_actual.apellido} ---")
+        print(f"Documento: {cliente_actual.documento}")
+        print(f"Teléfono actual: {cliente_actual.telefono}")
+        print(f"Correo actual: {cliente_actual.correo}")
+        campo = input("\n¿Qué dato desea modificar? (1. Teléfono / 2. Correo / 3. Cancelar): ").strip()
+        if campo == "3":
+            print("Perfil sin cambios.")
+            return
+        if campo != "1" and campo != "2":
+            print("Opción inválida.")
+            return
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            if campo == "1":
+                nuevo_telefono = input("Ingrese el nuevo teléfono: ")
+                cursor.execute(
+                    "UPDATE usuarios SET telefono = ? WHERE id = ?",
+                    (nuevo_telefono, cliente_actual.id_usuario)
+                )
+                conn.commit()
+                cliente_actual.telefono = nuevo_telefono
+                print("\n✓ Teléfono actualizado con éxito.")
+            else:
+                nuevo_correo = input("Ingrese el nuevo correo: ")
+                cursor.execute(
+                    "UPDATE usuarios SET correo = ? WHERE id = ?",
+                    (nuevo_correo, cliente_actual.id_usuario)
+                )
+                conn.commit()
+                cliente_actual.correo = nuevo_correo
+                print("\n✓ Correo actualizado con éxito.")
+        except sqlite3.Error as e:
+            print(f"[DB ERROR] {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                conn.close()
+
     def mostrar_todas_las_reservas(self):
         print("\n--- TODAS LAS RESERVAS DEL SISTEMA ---")
         conn = None
@@ -529,6 +672,12 @@ class Principal:
                     self.crear_reserva_sistema(cliente_actual)
                 elif opc == 3:
                     self.consultar_mis_reservas(cliente_actual)
+                elif opc == 4:
+                    cliente_actual.editar_reservas(self)
+                elif opc == 5:
+                    cliente_actual.cancelar_reservas(self)
+                elif opc == 6:
+                    self.modificar_perfil(cliente_actual)
                 elif opc == 7:
                     print("Cerrando sesión...");
                     break
