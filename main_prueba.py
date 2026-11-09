@@ -141,6 +141,15 @@ class Principal:
             hoy = datetime.date.today()
             anno = hoy.year
             mes = hoy.month
+            # Validación de anticipación: la fecha debe ser estrictamente posterior a hoy
+            try:
+                fecha_nueva_dt = datetime.date(anno, mes, dia)
+            except ValueError:
+                print("[ERROR] Las reservas deben hacerse con al menos un día de anticipación.")
+                return
+            if fecha_nueva_dt <= hoy:
+                print("[ERROR] Las reservas deben hacerse con al menos un día de anticipación.")
+                return
             # Construimos YYYY-MM-DD con ceros a la izquierda si es necesario
             fecha_apt = f"{anno}-{mes:02d}-{dia:02d}"
 
@@ -210,6 +219,18 @@ class Principal:
             reservas_existentes = cursor.fetchall()
             conn.close()
             conn = None
+
+            # Validación anti-cruce: comparación explícita de solapamiento de horas
+            for existente in reservas_existentes:
+                try:
+                    ex_inicio = datetime.datetime.strptime(str(existente[0]).strip(), "%I:%M %p")
+                    ex_final = datetime.datetime.strptime(str(existente[1]).strip(), "%I:%M %p")
+                except ValueError:
+                    ex_inicio = datetime.datetime.strptime(str(existente[0]).strip(), "%H:%M")
+                    ex_final = datetime.datetime.strptime(str(existente[1]).strip(), "%H:%M")
+                if hora_inicio_dt < ex_final and hora_final_dt > ex_inicio:
+                    print("[ERROR] La cancha ya se encuentra reservada en ese horario para la fecha seleccionada.")
+                    return
 
             reserva_temp = Reservas(fecha_apt, h_inicio_str.strip(), h_final_str.strip(), dur, "Pendiente", 0.0, 0.0)
             if not reserva_temp.validar_disponibilidad(h_inicio_str.strip(), h_final_str.strip(), reservas_existentes):
@@ -548,6 +569,97 @@ class Principal:
             if conn:
                 conn.close()
 
+    def pagar_saldo_pendiente(self, cliente):
+        print("\n--- PAGAR SALDO PENDIENTE DE RESERVA ---")
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            # PASO A: Filtrar reservas del cliente logueado con saldo pendiente
+            cursor.execute(
+                "SELECT id, fecha_apartada, total_reserva, abono FROM reservas WHERE id_cliente = ? AND total_reserva > abono AND estado != 'Cancelada'",
+                (cliente.id_usuario,)
+            )
+            rows = cursor.fetchall()
+            if not rows:
+                print("No tienes saldo pendiente en ninguna reserva. ¡Estás al día!")
+                return
+            # PASO B: Listar, calcular y seleccionar la reserva a saldar
+            print("\nReservas con saldo pendiente:")
+            for row in rows:
+                saldo_lista = (row[2] or 0.0) - (row[3] or 0.0)
+                print(f"ID: {row[0]} | Fecha: {row[1]} | Total: ${row[2]:,.2f} | Abono: ${row[3]:,.2f} | Saldo pendiente: ${saldo_lista:,.2f}")
+            id_res = int(input("\nIngrese el ID de la reserva que desea saldar: "))
+            seleccionada = None
+            for row in rows:
+                if row[0] == id_res:
+                    seleccionada = row
+            if seleccionada is None:
+                print("[ERROR] La reserva no existe o no tiene saldo pendiente.")
+                return
+            saldo = (seleccionada[2] or 0.0) - (seleccionada[3] or 0.0)
+            print(f"\nEl saldo pendiente de la reserva #{id_res} es: ${saldo:,.2f}")
+            print("\n--- SELECCIONE UN MÉTODO DE PAGO ---")
+            print("1. Efectivo")
+            print("2. Tarjeta")
+            print("3. Transferencia")
+            try:
+                opc_pago = int(input("Ingrese el método de pago (1/2/3): "))
+                pago_valido = False
+                comprobante_ingresado = "N/A"
+                id_metodo_db = opc_pago
+                # PASO C: Procesar pago con la lógica limpia de comprobantes autogenerados
+                if opc_pago == 1:
+                    monto_recibido = float(input("Ingrese el monto recibido en efectivo: "))
+                    if monto_recibido < 0 or monto_recibido < saldo:
+                        print("[ERROR] El monto no puede ser negativo o menor al saldo pendiente.")
+                        return
+                    cambio = monto_recibido - saldo
+                    print(f"\nPago en efectivo recibido. Su cambio es: ${cambio:,.2f}")
+                    pago_efectivo = Efectivo(id_metodopago=1, tipo_pago="Efectivo", descripcion="Pago en caja", id_efectivo=1, monto_recibido=monto_recibido, cambio=cambio, estado="Pendiente")
+                    pago_valido = pago_efectivo.validarPago(saldo)
+                    comprobante_ingresado = f"EFECTIVO-{datetime.datetime.now().strftime('%H%M%S')}"
+                elif opc_pago == 2:
+                    pago_tarjeta = Tarjeta(id_metodopago=2, tipo_pago="Tarjeta", descripcion="Pago en datáfono", id_tarjeta=1, tipo_tarjeta="Visa", titular=cliente.nombre, fecha_vencimiento="", codigo_seguridad="")
+                    pago_valido = pago_tarjeta.validarTarjeta()
+                    comprobante_ingresado = f"VOUCHER-{datetime.datetime.now().strftime('%H%M%S')}"
+                elif opc_pago == 3:
+                    pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", id_transferencia=1, banco_origen="Banco registrado", fecha=datetime.date.today().isoformat(), valor=saldo, estado="completada")
+                    pago_valido = pago_transferencia.validarTransferencia()
+                    comprobante_ingresado = f"TRANSF-{datetime.datetime.now().strftime('%H%M%S')}"
+                else:
+                    print("Opción de pago inválida.")
+                    return
+            except ValueError:
+                print("\n[ERROR] Valor ingresado inválido. Cancelando pago...")
+                return
+            if not pago_valido:
+                print("\nEl pago no pudo ser validado. Cancelando el proceso...")
+                return
+            # PASO C: INSERT INTO pagos con exactamente 6 columnas y 6 valores
+            fecha_pago = datetime.date.today().isoformat()
+            cursor.execute(
+                "INSERT INTO pagos (id_reserva, id_metodo_pago, fecha_pago, valor, comprobante, estado) VALUES (?, ?, ?, ?, ?, ?)",
+                (id_res, id_metodo_db, fecha_pago, saldo, comprobante_ingresado, "Registrado")
+            )
+            # PASO D: La reserva queda totalmente pagada y confirmada
+            cursor.execute(
+                "UPDATE reservas SET abono = total_reserva, estado = 'Confirmada' WHERE id = ? AND id_cliente = ?",
+                (id_res, cliente.id_usuario)
+            )
+            conn.commit()
+            print(f"\n✓ Saldo pendiente de la reserva #{id_res} pagado con éxito (${saldo:,.2f}).")
+            print("Reserva totalmente pagada y confirmada para la cancha.")
+        except ValueError:
+            print("\n[ERROR] Se ingresó un valor numérico incorrecto. El pago no fue registrado.")
+        except sqlite3.Error as e:
+            print(f"[DB ERROR] {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                conn.close()
+
     def modificar_perfil(self, cliente_actual):
         print(f"\n--- MODIFICAR MI PERFIL: {cliente_actual.nombre} {cliente_actual.apellido} ---")
         print(f"Documento: {cliente_actual.documento}")
@@ -663,7 +775,8 @@ class Principal:
             print("4. Editar mis reservas")
             print("5. Cancelar reservas")
             print("6. Modificar mi perfil")
-            print("7. Cerrar sesión")
+            print("7. Pagar saldo pendiente de reserva")
+            print("8. Cerrar sesión")
             try:
                 opc = int(input("Ingrese una opción: "))
                 if opc == 1:
@@ -679,6 +792,8 @@ class Principal:
                 elif opc == 6:
                     self.modificar_perfil(cliente_actual)
                 elif opc == 7:
+                    self.pagar_saldo_pendiente(cliente_actual)
+                elif opc == 8:
                     print("Cerrando sesión...");
                     break
                 else:
