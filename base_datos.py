@@ -120,6 +120,18 @@ def inicializar_base_datos():
             FOREIGN KEY (id_reserva) REFERENCES reservas(id),
             FOREIGN KEY (id_metodo_pago) REFERENCES metodos_pago(id)
         );
+
+        -- MANTENIMIENTOS
+        CREATE TABLE IF NOT EXISTS mantenimientos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_cancha INTEGER NOT NULL,
+            fecha TEXT NOT NULL,
+            hora_inicio TEXT NOT NULL,
+            hora_final TEXT NOT NULL,
+            motivo TEXT NOT NULL,
+            estado TEXT NOT NULL DEFAULT 'Programado',
+            FOREIGN KEY (id_cancha) REFERENCES canchas(id)
+        );
         """
 
         cursor.executescript(script)

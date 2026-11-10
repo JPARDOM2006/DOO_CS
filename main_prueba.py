@@ -1,12 +1,13 @@
-from cancha import Cancha
-from establecimiento import Establecimiento
+from cancha import Cancha, CanchaBuilder
+from establecimiento import Establecimiento, EstablecimientoBuilder
 from reservas import Reservas
 from tarifa import Tarifa
-from horario import Horario
+from horario import Horario, HorarioBuilder
 import usuarios as US
 from efectivo import Efectivo
 from tarjeta import Tarjeta
-from tranferencia import Transferencia
+from tranferencia import Transferencia, TransferenciaBuilder
+from mantenimiento import Mantenimiento, MantenimientoBuilder
 from pago import Pago
 import sqlite3
 import datetime
@@ -17,11 +18,12 @@ class Principal:
     def __init__(self):
         inicializar_base_datos()
         self._crear_establecimiento_defecto()
-        self.establecimiento = Establecimiento(
-            id_establecimiento=1,
-            nombre_establecimiento="Complejo Deportivo El Golazo",
-            ubicación="Av. Principal Calle 100",
-        )
+        self.establecimiento = (EstablecimientoBuilder()
+                                .set_nombre("Complejo Deportivo El Golazo")
+                                .set_direccion("Av. Principal Calle 100")
+                                .set_telefono("")
+                                .set_horario("")
+                                .build())
         self.cargar_canchas_desde_db()
 
     def _crear_establecimiento_defecto(self):
@@ -51,8 +53,14 @@ class Principal:
             cursor = conn.cursor()
             cursor.execute("SELECT id, nombre_cancha, tipo_cancha, precio, horario, estado FROM canchas")
             for row in cursor.fetchall():
-                can = Cancha(id_cancha=row[0], nombre_cancha=row[1], precio=row[3], horario=row[4], tipo_cancha=row[2])
-                can.estado = row[5]
+                can = (CanchaBuilder()
+                       .set_id(row[0])
+                       .set_nombre(row[1])
+                       .set_tipo_superficie(row[2])
+                       .set_precio_hora(row[3])
+                       .set_horario(row[4])
+                       .set_estado(row[5])
+                       .build())
                 self.establecimiento.lista_canchas.append(can)
         except sqlite3.Error as e:
             print(f"[DB ERROR] {e}")
@@ -70,24 +78,21 @@ class Principal:
 
             print("\n-- Configuración de Horario y Tarifa --")
             dias_semana = input("Días de aplicación (Ej: Lunes a Domingo): ")
-            tipo_dia = input("Tipo de día (Normal / Fin de semana / Festivo): ")
             jornada = input("Jornada (Diurna / Nocturna): ")
             h_inicio = input("Hora inicio franja (Ej: 06:00 PM): ")
             h_final = input("Hora final franja (Ej: 10:00 PM): ")
             valor_h = float(input("Valor por hora ($): "))
             valor_d = float(input("Valor recargo por día/fin de semana ($): "))
 
-            # Instanciar Horario con valores de dinero y franjas
-            horario_obj = Horario(
-                id_horario=0,
-                dias_semana=dias_semana,
-                tipo_dia=tipo_dia,
-                jornada=jornada,
-                hora_inicio=h_inicio,
-                hora_final=h_final,
-                valor_h=valor_h,
-                valor_d=valor_d
-            )
+            # Instanciar Horario con valores de dinero y franjas (Patrón Builder)
+            horario_obj = (HorarioBuilder()
+                           .set_hora_inicio(h_inicio)
+                           .set_hora_fin(h_final)
+                           .set_dias_operacion(dias_semana)
+                           .set_jornada(jornada)
+                           .set_valor_hora(valor_h)
+                           .set_recargo_dia(valor_d)
+                           .build())
             # Instanciar Tarifa pasando el Horario (dependencia)
             tarifa_nueva = Tarifa(horario_obj)
             precio_total = tarifa_nueva.calcular_tarifa()
@@ -270,7 +275,13 @@ class Principal:
                     print(f"\n¡Pago con tarjeta procesado con éxito!\nHas pagado un abono de ${abono_ingresado:,.2f}.\nEstaremos pendientes cuando desees cancelar el total de la reserva.")
                 elif opc_pago == 3:
                     banco = input("\nBanco de origen: ")
-                    pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", id_transferencia=1, banco_origen=banco, fecha=fecha_apt, valor=abono_ingresado, estado="completada")
+                    pago_transferencia = (TransferenciaBuilder()
+                                          .set_id_pago(3)
+                                          .set_tipo("Transferencia")
+                                          .set_monto(abono_ingresado)
+                                          .set_fecha(fecha_apt)
+                                          .set_banco_origen(banco)
+                                          .build())
                     pago_valido = pago_transferencia.validarTransferencia()
                     comprobante_ingresado = f"TRANSF-{datetime.datetime.now().strftime('%H%M%S')}"
                     print(f"\n¡Transferencia validada con éxito!\nHas registrado un abono de ${abono_ingresado:,.2f}.\nEstado: Abono registrado correctamente.")
@@ -624,7 +635,14 @@ class Principal:
                     pago_valido = pago_tarjeta.validarTarjeta()
                     comprobante_ingresado = f"VOUCHER-{datetime.datetime.now().strftime('%H%M%S')}"
                 elif opc_pago == 3:
-                    pago_transferencia = Transferencia(id_metodopago=3, tipo_pago="Transferencia", descripcion="Transferencia bancaria", id_transferencia=1, banco_origen="Banco registrado", fecha=datetime.date.today().isoformat(), valor=saldo, estado="completada")
+                    pago_transferencia = (TransferenciaBuilder()
+                                          .set_id_pago(3)
+                                          .set_tipo("Transferencia")
+                                          .set_monto(saldo)
+                                          .set_fecha(datetime.date.today().isoformat())
+                                          .set_banco_origen("Banco registrado")
+                                          .set_comprobante(f"TRANSF-{datetime.datetime.now().strftime('%H%M%S')}")
+                                          .build())
                     pago_valido = pago_transferencia.validarTransferencia()
                     comprobante_ingresado = f"TRANSF-{datetime.datetime.now().strftime('%H%M%S')}"
                 else:
@@ -759,6 +777,33 @@ class Principal:
             print(f" - Administradores: {cursor.fetchone()[0]}")
             cursor.execute("SELECT COUNT(*) FROM usuarios")
             print(f"Total de usuarios: {cursor.fetchone()[0]}")
+            print("\n[Mantenimientos Programados y Activos]")
+            cursor.execute("""
+                SELECT c.nombre_cancha, m.id_cancha, m.fecha, m.hora_inicio, m.hora_final, m.estado, m.motivo
+                FROM mantenimientos m
+                JOIN canchas c ON m.id_cancha = c.id
+            """)
+            mantenimientos_db = cursor.fetchall()
+            for reg in mantenimientos_db:
+                print(f"    • Lugar/Cancha: {reg[0]} (ID: {reg[1]})")
+                print(f"      Día del Mantenimiento: {reg[2]}")
+                print(f"      Hora Inicial: {reg[3]}")
+                print(f"      Hora Final: {reg[4]}")
+                print(f"      Estado y Motivo: {reg[5]} | {reg[6]}")
+            # Canchas marcadas 'En Mantenimiento' en BD sin intervención persistida (registros previos)
+            cursor.execute("SELECT id, nombre_cancha, estado FROM canchas WHERE estado = 'En Mantenimiento'")
+            canchas_en_mt = cursor.fetchall()
+            ids_persistidos = {str(reg[1]) for reg in mantenimientos_db}
+            for row in canchas_en_mt:
+                if str(row[0]) in ids_persistidos:
+                    continue
+                print(f"    • Lugar/Cancha: {row[1]} (ID: {row[0]})")
+                print("      Día del Mantenimiento: Sin registro en la base de datos (intervención previa)")
+                print("      Hora Inicial: Sin registro en la base de datos")
+                print("      Hora Final: Sin registro en la base de datos")
+                print(f"      Estado y Motivo: {row[2]} | Registro previo en la base de datos (sin motivo almacenado)")
+            if not mantenimientos_db and not canchas_en_mt:
+                print(" - No hay mantenimientos programados ni canchas activas en mantenimiento.")
             print("\n========================================")
         except sqlite3.Error as e:
             print(f"[DB ERROR] {e}")
@@ -803,15 +848,144 @@ class Principal:
             except EOFError:
                 break
 
+    def registrar_mantenimiento(self):
+        print("\n--- REGISTRO DE MANTENIMIENTO DE CANCHA ---")
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            # 1. Consulta y selección de la cancha a intervenir
+            cursor.execute("SELECT id, nombre_cancha, estado FROM canchas")
+            rows = cursor.fetchall()
+            if not rows:
+                print("No hay canchas registradas en el sistema.")
+                return
+            for row in rows:
+                print(f"• ID: {row[0]} | Cancha: {row[1]} | Estado: {row[2]}")
+            id_cancha = int(input("\nIngrese el ID de la cancha a intervenir: "))
+            seleccionada = None
+            for row in rows:
+                if row[0] == id_cancha:
+                    seleccionada = row
+            if seleccionada is None:
+                print("[ERROR] La cancha no existe.")
+                return
+            # 2. Reservas activas de esa cancha (para validación anti-cruces)
+            cursor.execute(
+                "SELECT id, fecha_apartada, hora_inicio, hora_final, estado FROM reservas WHERE id_cancha = ? AND estado != 'Cancelada'",
+                (id_cancha,)
+            )
+            reservas_cancha = cursor.fetchall()
+            print(f"\nReservas activas de la cancha '{seleccionada[1]}':")
+            if not reservas_cancha:
+                print("  (Ninguna reserva activa registrada para esta cancha.)")
+            else:
+                for r in reservas_cancha:
+                    print(f"  • ID: {r[0]} | Fecha: {r[1]} | Horario: {r[2]} a {r[3]} | Estado: {r[4]}")
+            # 3. Captura de datos del mantenimiento
+            hoy = datetime.datetime.now()
+            dia_mt = int(input("Ingrese el número del día para el mantenimiento (ej: 12, 15, 20): "))
+            hora_inicio = input("Hora de inicio del mantenimiento (Ej: 06:00 PM): ").strip()
+            hora_final = input("Hora final del mantenimiento (Ej: 07:00 PM): ").strip()
+            motivo = input("Describa el motivo o descripción del mantenimiento (ej: Reparación de césped): ").strip()
+            # 4a. Validación de fecha anticipada: día estrictamente posterior al de hoy
+            try:
+                fecha_mt = datetime.date(hoy.year, hoy.month, dia_mt)
+            except ValueError:
+                print("[ERROR] El día debe ser posterior al día de hoy.")
+                return
+            if dia_mt <= datetime.datetime.now().day:
+                print("[ERROR] El día debe ser posterior al día de hoy.")
+                return
+            fecha = f"{hoy.year}-{hoy.month:02d}-{dia_mt:02d}"
+            # 4b. Validación de franja horaria coherente
+            try:
+                ini_mt = datetime.datetime.strptime(hora_inicio, "%I:%M %p")
+                fin_mt = datetime.datetime.strptime(hora_final, "%I:%M %p")
+            except ValueError:
+                try:
+                    ini_mt = datetime.datetime.strptime(hora_inicio, "%H:%M")
+                    fin_mt = datetime.datetime.strptime(hora_final, "%H:%M")
+                except ValueError:
+                    print("[ERROR] Formato de hora inválido. Use HH:MM AM/PM (Ej: 06:00 PM).")
+                    return
+            if fin_mt <= ini_mt:
+                print("[ERROR] La hora final del mantenimiento debe ser mayor a la hora de inicio.")
+                return
+            # 4c. Vinculación estricta: reservas activas de ESA cancha en ESA fecha
+            cursor.execute(
+                "SELECT hora_inicio, hora_final FROM reservas WHERE id_cancha = ? AND fecha_apartada = ? AND estado != 'Cancelada'",
+                (id_cancha, fecha)
+            )
+            reservas_fecha = cursor.fetchall()
+            for r in reservas_fecha:
+                try:
+                    r_ini = datetime.datetime.strptime(str(r[0]).strip(), "%I:%M %p")
+                    r_fin = datetime.datetime.strptime(str(r[1]).strip(), "%I:%M %p")
+                except ValueError:
+                    r_ini = datetime.datetime.strptime(str(r[0]).strip(), "%H:%M")
+                    r_fin = datetime.datetime.strptime(str(r[1]).strip(), "%H:%M")
+                if ini_mt < r_fin and fin_mt > r_ini:
+                    print(f"[ERROR] El mantenimiento se cruza con una reserva activa que va de {str(r[0]).strip()} a {str(r[1]).strip()} en la fecha {fecha}. Registro cancelado.")
+                    return
+            # 5. Instancia del objeto usando el Patrón Builder
+            try:
+                mantenimiento_nuevo = (
+                    MantenimientoBuilder()
+                    .set_id_cancha(id_cancha)
+                    .set_fecha(fecha)
+                    .set_hora_inicio(hora_inicio)
+                    .set_hora_final(hora_final)
+                    .set_motivo(motivo)
+                    .set_estado("Programado")
+                    .build()
+                )
+            except ValueError as be:
+                print(f"[ERROR] {be}")
+                return
+            # 6. Persistencia del objeto Mantenimiento en la tabla mantenimientos
+            cursor.execute(
+                """
+                INSERT INTO mantenimientos (id_cancha, fecha, hora_inicio, hora_final, motivo, estado)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    mantenimiento_nuevo.id_cancha,
+                    mantenimiento_nuevo.fecha,
+                    mantenimiento_nuevo.hora_inicio,
+                    mantenimiento_nuevo.hora_final,
+                    mantenimiento_nuevo.motivo,
+                    mantenimiento_nuevo.estado,
+                )
+            )
+            cursor.execute(
+                "UPDATE canchas SET estado = 'En Mantenimiento' WHERE id = ?",
+                (mantenimiento_nuevo.id_cancha,)
+            )
+            conn.commit()
+            # 7. Confirmación extrayendo los datos directamente del objeto
+            print(f"\n[ÉXITO] La cancha ID {mantenimiento_nuevo.id_cancha} se ha registrado en mantenimiento correctamente.")
+            print(f"Intervención programada: {mantenimiento_nuevo.fecha} de {mantenimiento_nuevo.hora_inicio} a {mantenimiento_nuevo.hora_final}")
+            print(f"Motivo registrado: {mantenimiento_nuevo.motivo}")
+            print(f"Estado de la intervención: {mantenimiento_nuevo.estado}")
+        except ValueError:
+            print("\n[ERROR] Debes ingresar a número válido.")
+        except sqlite3.Error as e:
+            print(f"[DB ERROR] {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                conn.close()
+
     def menu_empleado(self, empleado_actual):
         while True:
             print(f"\n--- MENU EMPLEADO: {empleado_actual.nombre} ---")
             print("1. Registro entrada")
             print("2. Registrar salida")
             print("3. Consultar reservas del sistema")
-            print("4. Actualizar disponibilidad")
-            print("5. Registrar mantenimiento")
-            print("6. Cerrar sesión")
+            print("4. Registrar mantenimiento")
+            print("5. Cerrar sesión")
             try:
                 opc = int(input("Ingrese una opción: "))
                 if opc == 1:
@@ -820,7 +994,9 @@ class Principal:
                     empleado_actual.registrar_salida()
                 elif opc == 3:
                     empleado_actual.consultar_reservas(self)
-                elif opc == 6:
+                elif opc == 4:
+                    self.registrar_mantenimiento()
+                elif opc == 5:
                     print("Cerrando sesión...");
                     break
                 else:
