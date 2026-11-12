@@ -406,7 +406,7 @@ class Principal:
 
     def ingresar_usuario(self):
         print("\nBIENVENIDO AL INGRESO DE USUARIOS")
-        user = input("\nIngrese su correo o nombre, ingresados en the registro: ")
+        user = input("\nIngrese su correo o nombre, ingresados en el registro: ")
         password = input("Ingrese su contraseña: ")
         conn = None
         try:
@@ -1043,8 +1043,7 @@ class Principal:
             print("========================================")
             print("1. Crear usuario (Registro rápido)")
             print("2. Ingresar al sistema (Login)")
-            print("3. Mostrar clientes registrados")
-            print("4. Salir del programa")
+            print("3. Salir del programa")
             try:
                 opc = int(input("Ingrese una opción: "))
                 if opc == 1:
@@ -1052,21 +1051,6 @@ class Principal:
                 elif opc == 2:
                     self.ingresar_usuario()
                 elif opc == 3:
-                    conn = None
-                    try:
-                        conn = sqlite3.connect(DB_NAME)
-                        cursor = conn.cursor()
-                        cursor.execute("SELECT nombre, apellido, telefono, correo FROM usuarios WHERE tipo_usuario='cliente'")
-                        rows = cursor.fetchall()
-                        if not rows:
-                            print("\nNo hay clientes registrados.")
-                        else:
-                            for i in rows:
-                                print(f"Cliente: {i[0]} {i[1]} - Tel: {i[2]} - Correo: {i[3]}")
-                    finally:
-                        if conn:
-                            conn.close()
-                elif opc == 4:
                     print("Saliendo del sistema...");
                     break
                 else:
